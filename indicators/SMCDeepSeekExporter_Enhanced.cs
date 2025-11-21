@@ -31,19 +31,10 @@ namespace NinjaTrader.NinjaScript.Indicators
         // NOTE: No longer need separate smcM5/smcM15 instances!
         // M5/M15 data now comes from main SMC indicator via public properties
 
-        // Technical Indicators
-        private RSI _rsi14;
-        private RSI _rsi50;
-        private MACD _macd;
-        private EMA _ema9, _ema21, _ema50, _ema200;
-        private ATR _atr14, _atr50, _atr200;
-        private ADX _adx14;
-        private Stochastics _stoch;
-        private Bollinger _bb;
-
         // Volume Delta indicator (Volumdelta.cs)
         private Volumdelta _volumdelta;
         private bool _vdfInitialized = false;
+        private ATR _atr14;
 
         private string exportFolder;
         private string currentDate;
@@ -154,24 +145,8 @@ namespace NinjaTrader.NinjaScript.Indicators
                     Print(string.Format("[Enhanced Exporter] ERROR loading SMC: {0}", ex.Message));
                 }
 
-                // Technical Indicators - explicitly use BarsArray[0] (primary data series)
-                try
-                {
-                    _rsi14 = RSI(BarsArray[0], 14, 1);
-                    _rsi50 = RSI(BarsArray[0], 50, 1);
-                    _macd = MACD(BarsArray[0], 12, 26, 9);
-                    _ema9 = EMA(BarsArray[0], 9);
-                    _ema21 = EMA(BarsArray[0], 21);
-                    _ema50 = EMA(BarsArray[0], 50);
-                    _ema200 = EMA(BarsArray[0], 200);
-                    _atr14 = ATR(BarsArray[0], 14);
-                    _atr50 = ATR(BarsArray[0], 50);
-                    _atr200 = ATR(BarsArray[0], 200);
-                    _adx14 = ADX(BarsArray[0], 14);
-                    _stoch = Stochastics(BarsArray[0], 14, 3, 3);
-                    _bb = Bollinger(BarsArray[0], 2, 20);
-                }
-                catch { }
+                // Minimal ATR for export fields
+                try { _atr14 = ATR(BarsArray[0], 14); } catch { _atr14 = null; }
 
                 // NOTE: Volumdelta will be initialized later in OnBarUpdate
                 // when all data series are ready
@@ -590,27 +565,62 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "prev_swing_low", GetSeriesDouble(smc.ExtPrevSwingLow, barsAgo), false, false);
             sb.Append(","); AppendProp(sb, "swing_pattern", GetSeriesInt(smc.ExtSwingPattern, barsAgo), false, false);
 
-            // Technical Indicators
-            sb.Append(",\"technicals\":{");
-            AppendProp(sb, "rsi_14", GetIndicatorValue(_rsi14, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "rsi_50", GetIndicatorValue(_rsi50, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "macd", GetIndicatorValue(_macd, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "macd_avg", GetIndicatorValue(_macd != null ? _macd.Avg : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "macd_diff", GetIndicatorValue(_macd != null ? _macd.Diff : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "ema_9", GetIndicatorValue(_ema9, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "ema_21", GetIndicatorValue(_ema21, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "ema_50", GetIndicatorValue(_ema50, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "ema_200", GetIndicatorValue(_ema200, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "atr_14", GetIndicatorValue(_atr14, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "atr_50", GetIndicatorValue(_atr50, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "atr_200", GetIndicatorValue(_atr200, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "adx", GetIndicatorValue(_adx14, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "stoch_k", GetIndicatorValue(_stoch != null ? _stoch.K : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "stoch_d", GetIndicatorValue(_stoch != null ? _stoch.D : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "bb_upper", GetIndicatorValue(_bb != null ? _bb.Upper : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "bb_middle", GetIndicatorValue(_bb != null ? _bb.Middle : null, barsAgo), false, false); sb.Append(",");
-            AppendProp(sb, "bb_lower", GetIndicatorValue(_bb != null ? _bb.Lower : null, barsAgo), false, false);
-            sb.Append("}");
+            // ATR (minimal)
+            sb.Append(","); AppendProp(sb, "atr_14", GetIndicatorValue(_atr14, barsAgo), false, false);
+
+            // FVG details (active/nearest)
+            int fvgDir = 0;
+            double fvgTop = double.NaN, fvgBottom = double.NaN;
+            int fvgBarIndex = -1;
+            if (smc.ActiveFvgDirection != null && HasSeriesValue(smc.ActiveFvgDirection, barsAgo))
+                fvgDir = smc.ActiveFvgDirection[barsAgo];
+            if (smc.ActiveFvgTop != null && HasSeriesValue(smc.ActiveFvgTop, barsAgo))
+                fvgTop = smc.ActiveFvgTop[barsAgo];
+            if (smc.ActiveFvgBottom != null && HasSeriesValue(smc.ActiveFvgBottom, barsAgo))
+                fvgBottom = smc.ActiveFvgBottom[barsAgo];
+            if (smc.ActiveFvgBarIndex != null && HasSeriesValue(smc.ActiveFvgBarIndex, barsAgo))
+                fvgBarIndex = smc.ActiveFvgBarIndex[barsAgo];
+
+            bool fvgDetected = fvgDir != 0 && !double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom);
+            string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : null);
+            double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
+
+            sb.Append(","); AppendProp(sb, "fvg_detected", fvgDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "fvg_type", fvgType, false);
+            sb.Append(","); AppendProp(sb, "fvg_top", fvgTop, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_bottom", fvgBottom, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_bar_index", fvgBarIndex, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_gap_size", fvgGap, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_filled", false, false); // not tracked, default false
+            sb.Append(","); AppendProp(sb, "fvg_fill_percentage", double.NaN, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_volume", double.NaN, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_delta", double.NaN, false, false);
+
+            // OB details (nearest/active)
+            int obDir = 0;
+            double obTop = double.NaN, obBottom = double.NaN;
+            int obBarIndex = -1;
+            if (smc.ActiveObDirection != null && HasSeriesValue(smc.ActiveObDirection, barsAgo))
+                obDir = smc.ActiveObDirection[barsAgo];
+            if (smc.ActiveObTop != null && HasSeriesValue(smc.ActiveObTop, barsAgo))
+                obTop = smc.ActiveObTop[barsAgo];
+            if (smc.ActiveObBottom != null && HasSeriesValue(smc.ActiveObBottom, barsAgo))
+                obBottom = smc.ActiveObBottom[barsAgo];
+            if (smc.ActiveObBarIndex != null && HasSeriesValue(smc.ActiveObBarIndex, barsAgo))
+                obBarIndex = smc.ActiveObBarIndex[barsAgo];
+
+            bool obDetected = obDir != 0 && !double.IsNaN(obTop) && !double.IsNaN(obBottom);
+            string obType = obDir == 1 ? "bullish" : (obDir == -1 ? "bearish" : null);
+
+            sb.Append(","); AppendProp(sb, "ob_detected", obDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "ob_type", obType, false);
+            sb.Append(","); AppendProp(sb, "ob_top", obTop, false, false);
+            sb.Append(","); AppendProp(sb, "ob_bottom", obBottom, false, false);
+            sb.Append(","); AppendProp(sb, "ob_bar_index", obBarIndex, false, false);
+            // Using same active OB as "nearest" for now
+            sb.Append(","); AppendProp(sb, "nearest_ob_top", obTop, false, false);
+            sb.Append(","); AppendProp(sb, "nearest_ob_bottom", obBottom, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "nearest_ob_type", obType, false);
 
             // Price Action Analysis
             sb.Append(",\"price_action\":");
@@ -869,6 +879,18 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append("\""); sb.Append(name); sb.Append("\":");
             if (quote) { sb.Append("\""); sb.Append(EscapeJson(value)); sb.Append("\""); }
             else sb.Append(value);
+        }
+
+        private void AppendPropNullableString(StringBuilder sb, string name, string value, bool first)
+        {
+            sb.Append("\""); sb.Append(name); sb.Append("\":");
+            if (string.IsNullOrEmpty(value)) sb.Append("null");
+            else
+            {
+                sb.Append("\"");
+                sb.Append(EscapeJson(value));
+                sb.Append("\"");
+            }
         }
 
         private void AppendProp(StringBuilder sb, string name, double value, bool quote, bool first)

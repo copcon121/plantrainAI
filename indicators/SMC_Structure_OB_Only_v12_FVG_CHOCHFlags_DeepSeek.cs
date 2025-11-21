@@ -349,6 +349,15 @@ namespace NinjaTrader.NinjaScript.Indicators
         private Series<bool> _hasActiveFvgBear;
         private Series<bool> _inPremiumZone;
         private Series<bool> _inDiscountZone;
+        // Active FVG/OB details for export
+        private Series<double> _activeFvgTop;
+        private Series<double> _activeFvgBottom;
+        private Series<int> _activeFvgBarIndex;
+        private Series<int> _activeFvgDirection; // 1 bull, -1 bear, 0 none
+        private Series<double> _activeObTop;
+        private Series<double> _activeObBottom;
+        private Series<int> _activeObBarIndex;
+        private Series<int> _activeObDirection; // 1 bull, -1 bear, 0 none
 
         // Structure direction (1,0,-1)
         private Series<int> _extStructureDir;
@@ -601,6 +610,14 @@ namespace NinjaTrader.NinjaScript.Indicators
                 _hasActiveFvgBear = new Series<bool>(this);
                 _inPremiumZone = new Series<bool>(this);
                 _inDiscountZone = new Series<bool>(this);
+                _activeFvgTop = new Series<double>(this);
+                _activeFvgBottom = new Series<double>(this);
+                _activeFvgBarIndex = new Series<int>(this);
+                _activeFvgDirection = new Series<int>(this);
+                _activeObTop = new Series<double>(this);
+                _activeObBottom = new Series<double>(this);
+                _activeObBarIndex = new Series<int>(this);
+                _activeObDirection = new Series<int>(this);
 
                 _extStructureDir = new Series<int>(this);
                 _intStructureDir = new Series<int>(this);
@@ -1206,6 +1223,8 @@ namespace NinjaTrader.NinjaScript.Indicators
                 TryDetectFVG();
                 MaintainFVGs();       // includes FVG retest pulses
             }
+            UpdateActiveObSeries();
+            UpdateActiveFvgSeries();
 
             if (ShowPremiumDiscount)
                 DrawPremiumDiscountZones();
@@ -1982,6 +2001,44 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
         }
 
+        private void UpdateActiveObSeries()
+        {
+            if (_activeObTop == null || _activeObBottom == null || _activeObBarIndex == null || _activeObDirection == null)
+                return;
+
+            double price = Close[0];
+            OBZ best = null;
+            double bestDist = double.MaxValue;
+
+            foreach (var z in _obZones)
+            {
+                if (z == null) continue;
+                if (z.Mitigated || z.Invalidated) continue;
+                double mid = (z.Hi + z.Lo) * 0.5;
+                double dist = Math.Abs(price - mid);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = z;
+                }
+            }
+
+            if (best != null)
+            {
+                _activeObTop[0] = best.Hi;
+                _activeObBottom[0] = best.Lo;
+                _activeObBarIndex[0] = best.SourceBar;
+                _activeObDirection[0] = best.Bull ? 1 : -1;
+            }
+            else
+            {
+                _activeObTop[0] = double.NaN;
+                _activeObBottom[0] = double.NaN;
+                _activeObBarIndex[0] = -1;
+                _activeObDirection[0] = 0;
+            }
+        }
+
         private void DrawOb(OBZ z)
         {
             // Skip drawing for multi-timeframe bars (M5/M15)
@@ -2164,6 +2221,43 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
         }
 
+        private void UpdateActiveFvgSeries()
+        {
+            if (_activeFvgTop == null || _activeFvgBottom == null || _activeFvgBarIndex == null || _activeFvgDirection == null)
+                return;
+
+            double price = Close[0];
+            FVGZ best = null;
+            double bestDist = double.MaxValue;
+
+            foreach (var z in _fvgs)
+            {
+                if (z == null || z.Removed) continue;
+                double refPx = z.Bull ? z.Bottom : z.Top;
+                double dist = Math.Abs(price - refPx);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = z;
+                }
+            }
+
+            if (best != null)
+            {
+                _activeFvgTop[0] = best.Top;
+                _activeFvgBottom[0] = best.Bottom;
+                _activeFvgBarIndex[0] = best.SourceBar;
+                _activeFvgDirection[0] = best.Bull ? 1 : -1;
+            }
+            else
+            {
+                _activeFvgTop[0] = double.NaN;
+                _activeFvgBottom[0] = double.NaN;
+                _activeFvgBarIndex[0] = -1;
+                _activeFvgDirection[0] = 0;
+            }
+        }
+
         private void DrawFVG(FVGZ z, bool liveExtend)
         {
             // Skip drawing for multi-timeframe bars (M5/M15)
@@ -2338,6 +2432,30 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         [Browsable(false), XmlIgnore]
         public Series<bool> HasActiveFvgBear { get { return _hasActiveFvgBear; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<double> ActiveFvgTop { get { return _activeFvgTop; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<double> ActiveFvgBottom { get { return _activeFvgBottom; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<int> ActiveFvgBarIndex { get { return _activeFvgBarIndex; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<int> ActiveFvgDirection { get { return _activeFvgDirection; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<double> ActiveObTop { get { return _activeObTop; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<double> ActiveObBottom { get { return _activeObBottom; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<int> ActiveObBarIndex { get { return _activeObBarIndex; } }
+
+        [Browsable(false), XmlIgnore]
+        public Series<int> ActiveObDirection { get { return _activeObDirection; } }
 
         [Browsable(false), XmlIgnore]
         public Series<bool> InPremiumZone { get { return _inPremiumZone; } }
