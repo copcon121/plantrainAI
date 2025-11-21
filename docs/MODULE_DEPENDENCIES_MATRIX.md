@@ -282,7 +282,7 @@ Bearish: Price HH + Delta less positive (cumulative)
 +1 if HTF EMA20 > EMA50 (bullish MA trend)
 +1 if HTF making HH/HL (bullish structure)
 +1 if aligned with FVG direction
-Score: 0-3 → Normalized to 0-1
+Score: 0-3 -> Normalized to 0-1
 ```
 
 ---

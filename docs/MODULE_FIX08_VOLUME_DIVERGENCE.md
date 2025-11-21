@@ -25,25 +25,20 @@ Detect **Volume/Delta Divergence** tại swing points để:
 ### 1.3 Vị Trí Trong Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                VOLUME DIVERGENCE FLOW (Simplified)              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  [Swing Points Detection]                                       │
-│       │                                                         │
-│       ▼                                                         │
-│  ┌─────────────────────────────────────────────────────┐       │
-│  │        SWING-DELTA DIVERGENCE DETECTOR              │       │
-│  │                                                     │       │
-│  │  Bullish Div: Price LL + Delta less negative        │       │
-│  │  Bearish Div: Price HH + Delta less positive        │       │
-│  │                                                     │       │
-│  └─────────────────────────────────────────────────────┘       │
-│       │                                                         │
-│       ▼                                                         │
-│  [has_divergence, div_type, div_score]                         │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|            VOLUME DIVERGENCE FLOW (Simplified)              |
++-------------------------------------------------------------+
+|  [Swing Points Detection]                                   |
+|       |                                                     |
+|       v                                                     |
+|  +---------------- SWING-DELTA DIVERGENCE ----------------+ |
+|  |  Bullish: Price LL + Delta less negative               | |
+|  |  Bearish: Price HH + Delta less positive               | |
+|  +--------------------------------------------------------+ |
+|       |                                                     |
+|       v                                                     |
+|  [has_divergence, div_type, div_score]                      |
++-------------------------------------------------------------+
 ```
 
 ---
@@ -64,7 +59,7 @@ Signal: Potential reversal UP
 ```
 Swing Low 1: Price = 100.00, Delta = -500 (strong selling)
 Swing Low 2: Price = 99.80,  Delta = -200 (weaker selling)
-             ↑ Lower price but less selling = BULLISH DIVERGENCE
+             -> Lower price but less selling = BULLISH DIVERGENCE
 ```
 
 ### 2.2 Bearish Divergence
@@ -81,7 +76,7 @@ Signal: Potential reversal DOWN
 ```
 Swing High 1: Price = 100.00, Delta = +500 (strong buying)
 Swing High 2: Price = 100.20, Delta = +200 (weaker buying)
-              ↑ Higher price but less buying = BEARISH DIVERGENCE
+              -> Higher price but less buying = BEARISH DIVERGENCE
 ```
 
 ---

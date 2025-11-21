@@ -26,31 +26,21 @@ Tính **Stop Loss placement** tối ưu cho FVG signal dựa trên SMC structure
 ### 1.3 Vị Trí Trong Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     STOP PLACEMENT FLOW                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  [FVG Signal]                                                   │
-│       │                                                         │
-│       ▼                                                         │
-│  ┌─────────────────────────────────────────────────────┐       │
-│  │              STOP CALCULATION OPTIONS               │       │
-│  │                                                     │       │
-│  │  Option 1: FVG Edge Stop                           │       │
-│  │  └─ stop = fvg_bottom - buffer (bullish)           │       │
-│  │                                                     │       │
-│  │  Option 2: OB Stop                                 │       │
-│  │  └─ stop = ob_bottom - buffer (bullish)            │       │
-│  │                                                     │       │
-│  │  Option 3: Structure Stop                          │       │
-│  │  └─ stop = recent_swing_low - buffer (bullish)     │       │
-│  │                                                     │       │
-│  └─────────────────────────────────────────────────────┘       │
-│       │                                                         │
-│       ▼                                                         │
-│  [Select Optimal Stop] → stop_price, stop_type, stop_distance   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                   STOP PLACEMENT FLOW                       |
++-------------------------------------------------------------+
+|  [FVG Signal]                                               |
+|       |                                                     |
+|       v                                                     |
+|  +---------------- STOP CALCULATION OPTIONS ---------------+|
+|  | Option 1: FVG Edge Stop       -> stop = fvg_bottom - buf|
+|  | Option 2: OB Stop             -> stop = ob_bottom - buf |
++  | Option 3: Structure Stop      -> stop = swing_low - buf |
+|  +---------------------------------------------------------+|
+|       |                                                     |
+|       v                                                     |
+|  [Select Optimal Stop] -> stop_price, stop_type, distance   |
++-------------------------------------------------------------+
 ```
 
 ---

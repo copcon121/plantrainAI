@@ -85,27 +85,24 @@ This document contains the **complete list of fields** that the NinjaTrader indi
 ### 1.1 Architecture Reminder
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│                         DATA FLOW                                  │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  NinjaTrader C# Indicator                                          │
-│       │                                                            │
-│       │  exports RAW data                                          │
-│       ▼                                                            │
-│  raw_smc_export.jsonl  ──────────────────────────────────────────►│
-│       │                                                            │
-│       │  Python Layer 2 processes                                  │
-│       ▼                                                            │
-│  bar_states.jsonl  (enriched with module calculations)             │
-│       │                                                            │
-│       ▼                                                            │
-│  event_states.jsonl  (FVG signals only)                           │
-│       │                                                            │
-│       ▼                                                            │
-│  ML Training Pipeline                                              │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------+
+|                           DATA FLOW                          |
++---------------------------------------------------------------+
+| NinjaTrader C# Indicator                                     |
+|   |                                                          |
+|   |  exports RAW data                                        |
+|   v                                                          |
+|  raw_smc_export.jsonl  --->  Python Layer 2 processes        |
+|                             |                                |
+|                             v                                |
+|                          bar_states.jsonl (enriched)         |
+|                             |                                |
+|                             v                                |
+|                          event_states.jsonl (FVG signals)    |
+|                             |                                |
+|                             v                                |
+|                        ML Training Pipeline                  |
++---------------------------------------------------------------+
 ```
 
 ### 1.2 Key Principle
@@ -721,45 +718,43 @@ Additional fields for enhanced analysis:
 ## 7. MODULE DEPENDENCY MAP
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     MODULE DEPENDENCIES                          │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  NINJA EXPORT                                                    │
-│       │                                                          │
-│       ├──► Module #02 FVG Quality (PRIMARY)                     │
-│       │        └──► Needs: FVG fields, volume, delta, ATR       │
-│       │                                                          │
-│       ├──► Module #01 OB Quality                                │
-│       │        └──► Needs: OB fields                            │
-│       │                                                          │
-│       ├──► Module #03 Structure Context                         │
-│       │        └──► Needs: CHoCH, BOS, swing fields             │
-│       │                                                          │
-│       ├──► Module #05 Stop Placement                            │
-│       │        └──► Needs: FVG, OB, swing fields                │
-│       │                                                          │
-│       ├──► Module #06 Target Placement                          │
-│       │        └──► Needs: swing, liquidity fields              │
-│       │                                                          │
-│       ├──► Module #07 Market Condition                          │
-│       │        └──► Needs: ATR, ADX, OHLC                       │
-│       │                                                          │
-│       ├──► Module #08 Volume Divergence                         │
-│       │        └──► Needs: swing, delta fields                  │
-│       │                                                          │
-│       ├──► Module #10 MTF Alignment                             │
-│       │        └──► Needs: HTF fields                           │
-│       │                                                          │
-│       └──► Module #11 Liquidity Map                             │
-│                └──► Needs: swing, liquidity fields              │
-│                                                                  │
-│       │                                                          │
-│       ▼                                                          │
-│  Module #04 Confluence                                          │
-│       └──► Combines outputs from all above modules              │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                     MODULE DEPENDENCIES                     |
++-------------------------------------------------------------+
+|  NINJA EXPORT                                               |
+|      |                                                      |
+|      +--> Module #02 FVG Quality (PRIMARY)                  |
+|      |        \--> Needs: FVG fields, volume, delta, ATR    |
+|      |                                                      |
+|      +--> Module #01 OB Quality                             |
+|      |        \--> Needs: OB fields                         |
+|      |                                                      |
+|      +--> Module #03 Structure Context                      |
+|      |        \--> Needs: CHoCH, BOS, swing fields          |
+|      |                                                      |
+|      +--> Module #05 Stop Placement                         |
+|      |        \--> Needs: FVG, OB, swing fields             |
+|      |                                                      |
+|      +--> Module #06 Target Placement                       |
+|      |        \--> Needs: swing, liquidity fields           |
+|      |                                                      |
+|      +--> Module #07 Market Condition                       |
+|      |        \--> Needs: ATR, ADX, OHLC                    |
+|      |                                                      |
+|      +--> Module #08 Volume Divergence                      |
+|      |        \--> Needs: swing, delta fields               |
+|      |                                                      |
+|      +--> Module #10 MTF Alignment                          |
+|      |        \--> Needs: HTF fields                        |
+|      |                                                      |
+|      \--> Module #11 Liquidity Map                          |
+|               \--> Needs: swing, liquidity fields           |
+|                                                          |
+|      |                                                      |
+|      v                                                      |
+|  Module #04 Confluence                                      |
+|         \--> Combines outputs from all above modules        |
++-------------------------------------------------------------+
 ```
 
 ---
