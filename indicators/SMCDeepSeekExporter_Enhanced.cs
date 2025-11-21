@@ -35,6 +35,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         private Volumdelta _volumdelta;
         private bool _vdfInitialized = false;
         private ATR _atr14;
+        private ADX _adx14;
 
         private string exportFolder;
         private string currentDate;
@@ -147,6 +148,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
                 // Minimal ATR for export fields
                 try { _atr14 = ATR(BarsArray[0], 14); } catch { _atr14 = null; }
+                try { _adx14 = ADX(BarsArray[0], 14); } catch { _adx14 = null; }
 
                 // NOTE: Volumdelta will be initialized later in OnBarUpdate
                 // when all data series are ready
@@ -453,7 +455,34 @@ namespace NinjaTrader.NinjaScript.Indicators
             AppendProp(sb, "tf", GetTimeframeLabel(), true, true); sb.Append(",");
             AppendProp(sb, "bar_index", CurrentBar, false, false); sb.Append(",");
             AppendProp(sb, "session", GetSessionTag(), true, false); sb.Append(",");
-            AppendProp(sb, "signal", signal, true, false);
+            AppendProp(sb, "signal", signal, true, false); sb.Append(",");
+
+            // Base bar fields (top-level)
+            AppendProp(sb, "timestamp", Time[0].ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), true, false); sb.Append(",");
+            AppendProp(sb, "open", Open[0], false, false); sb.Append(",");
+            AppendProp(sb, "high", High[0], false, false); sb.Append(",");
+            AppendProp(sb, "low", Low[0], false, false); sb.Append(",");
+            AppendProp(sb, "close", Close[0], false, false); sb.Append(",");
+
+            // Volume & delta
+            double totalVol = 0.0;
+            try { totalVol = Volumes[0][0]; } catch { totalVol = 0.0; }
+            double deltaClose = 0.0;
+            double cumDelta = 0.0;
+            if (UseVolumeDelta && _volumdelta != null)
+            {
+                try { deltaClose = _volumdelta.DeltasClose[0]; } catch { deltaClose = 0.0; }
+                try { cumDelta = _volumdelta.DeltasClosecum[0]; } catch { cumDelta = 0.0; }
+            }
+            double buyVol = (totalVol + deltaClose) / 2.0;
+            double sellVol = (totalVol - deltaClose) / 2.0;
+
+            AppendProp(sb, "volume", totalVol, false, false); sb.Append(",");
+            AppendProp(sb, "buy_volume", buyVol, false, false); sb.Append(",");
+            AppendProp(sb, "sell_volume", sellVol, false, false); sb.Append(",");
+            AppendProp(sb, "delta", deltaClose, false, false); sb.Append(",");
+            AppendProp(sb, "cumulative_delta", cumDelta, false, false); sb.Append(",");
+            AppendProp(sb, "atr_14", GetIndicatorValue(_atr14, 0), false, false);
 
             double entry = Close[0];
             double sl = double.NaN, tp = double.NaN;
@@ -497,6 +526,140 @@ namespace NinjaTrader.NinjaScript.Indicators
             AppendProp(sb, "sl", slOut, false, false); sb.Append(",");
             AppendProp(sb, "tp", tpOut, false, false);
 
+            // FVG/OB details (top-level)
+            int fvgDir = 0;
+            double fvgTop = double.NaN, fvgBottom = double.NaN;
+            int fvgBarIndex = -1;
+            if (smc != null)
+            {
+                if (smc.ActiveFvgDirection != null && HasSeriesValue(smc.ActiveFvgDirection, 0))
+                    fvgDir = smc.ActiveFvgDirection[0];
+                if (smc.ActiveFvgTop != null && HasSeriesValue(smc.ActiveFvgTop, 0))
+                    fvgTop = smc.ActiveFvgTop[0];
+                if (smc.ActiveFvgBottom != null && HasSeriesValue(smc.ActiveFvgBottom, 0))
+                    fvgBottom = smc.ActiveFvgBottom[0];
+                if (smc.ActiveFvgBarIndex != null && HasSeriesValue(smc.ActiveFvgBarIndex, 0))
+                    fvgBarIndex = smc.ActiveFvgBarIndex[0];
+            }
+            bool fvgDetected = fvgDir != 0 && !double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom);
+            string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : "none");
+            double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
+
+            sb.Append(","); AppendProp(sb, "fvg_detected", fvgDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "fvg_type", fvgType, false);
+            sb.Append(","); AppendProp(sb, "fvg_top", fvgTop, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_bottom", fvgBottom, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_bar_index", fvgBarIndex, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_gap_size", fvgGap, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_filled", false, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_fill_percentage", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_volume", double.IsNaN(totalVol) ? 0.0 : totalVol, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_delta", double.IsNaN(deltaClose) ? 0.0 : deltaClose, false, false);
+
+            int obDir = 0;
+            double obTop = double.NaN, obBottom = double.NaN;
+            int obBarIndex = -1;
+            if (smc != null)
+            {
+                if (smc.ActiveObDirection != null && HasSeriesValue(smc.ActiveObDirection, 0))
+                    obDir = smc.ActiveObDirection[0];
+                if (smc.ActiveObTop != null && HasSeriesValue(smc.ActiveObTop, 0))
+                    obTop = smc.ActiveObTop[0];
+                if (smc.ActiveObBottom != null && HasSeriesValue(smc.ActiveObBottom, 0))
+                    obBottom = smc.ActiveObBottom[0];
+                if (smc.ActiveObBarIndex != null && HasSeriesValue(smc.ActiveObBarIndex, 0))
+                    obBarIndex = smc.ActiveObBarIndex[0];
+            }
+            bool obDetected = obDir != 0 && !double.IsNaN(obTop) && !double.IsNaN(obBottom);
+            string obType = obDir == 1 ? "bullish" : (obDir == -1 ? "bearish" : "none");
+
+            // Default zeros instead of nulls for downstream validators
+            if (double.IsNaN(obTop)) obTop = 0.0;
+            if (double.IsNaN(obBottom)) obBottom = 0.0;
+            if (double.IsNaN(fvgTop)) fvgTop = 0.0;
+            if (double.IsNaN(fvgBottom)) fvgBottom = 0.0;
+            if (double.IsNaN(fvgGap)) fvgGap = 0.0;
+            if (obBarIndex < 0) obBarIndex = 0;
+            if (fvgBarIndex < 0) fvgBarIndex = 0;
+
+            sb.Append(","); AppendProp(sb, "ob_detected", obDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "ob_type", obType, false);
+            sb.Append(","); AppendProp(sb, "ob_top", obTop, false, false);
+            sb.Append(","); AppendProp(sb, "ob_bottom", obBottom, false, false);
+            sb.Append(","); AppendProp(sb, "ob_bar_index", obBarIndex, false, false);
+            sb.Append(","); AppendProp(sb, "nearest_ob_top", obTop, false, false);
+            sb.Append(","); AppendProp(sb, "nearest_ob_bottom", obBottom, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "nearest_ob_type", obType, false);
+
+            // Structure context (simplified)
+            bool chochUp = smc != null && GetSeriesBool(smc.ExtChochUpPulse, 0);
+            bool chochDown = smc != null && GetSeriesBool(smc.ExtChochDownPulse, 0);
+            bool bosUp = smc != null && GetSeriesBool(smc.ExtBosUpPulse, 0);
+            bool bosDown = smc != null && GetSeriesBool(smc.ExtBosDownPulse, 0);
+
+            bool chochDetected = chochUp || chochDown;
+            bool bosDetected = bosUp || bosDown;
+            string chochType = chochUp ? "bullish" : (chochDown ? "bearish" : "none");
+            string bosType = bosUp ? "bullish" : (bosDown ? "bearish" : "none");
+            string lastStructureBreak = bosDetected
+                ? (bosUp ? "bos_bullish" : "bos_bearish")
+                : (chochDetected ? (chochUp ? "choch_bullish" : "choch_bearish") : "none");
+
+            sb.Append(","); AppendProp(sb, "choch_detected", chochDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "choch_type", chochType, false);
+            sb.Append(","); AppendProp(sb, "choch_bars_ago", chochDetected ? 0 : -1, false, false);
+            sb.Append(","); AppendProp(sb, "bos_detected", bosDetected, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "bos_type", bosType, false);
+            sb.Append(","); AppendProp(sb, "bos_bars_ago", bosDetected ? 0 : -1, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "last_structure_break", lastStructureBreak, false);
+
+            int currentTrend = smc != null && smc.ExtStructureDir != null && HasSeriesValue(smc.ExtStructureDir, 0)
+                ? smc.ExtStructureDir[0]
+                : 0;
+            sb.Append(","); AppendProp(sb, "current_trend", currentTrend, false, false);
+            double lastSwingHigh = GetSeriesDouble(smc != null ? smc.ExtLastSwingHigh : null, 0);
+            double lastSwingLow = GetSeriesDouble(smc != null ? smc.ExtLastSwingLow : null, 0);
+            double recentSwingHigh = GetSeriesDouble(smc != null ? smc.ExtPrevSwingHigh : null, 0);
+            double recentSwingLow = GetSeriesDouble(smc != null ? smc.ExtPrevSwingLow : null, 0);
+            if (double.IsNaN(lastSwingHigh)) lastSwingHigh = 0.0;
+            if (double.IsNaN(lastSwingLow)) lastSwingLow = 0.0;
+            if (double.IsNaN(recentSwingHigh)) recentSwingHigh = 0.0;
+            if (double.IsNaN(recentSwingLow)) recentSwingLow = 0.0;
+
+            sb.Append(","); AppendProp(sb, "last_swing_high", lastSwingHigh, false, false);
+            sb.Append(","); AppendProp(sb, "last_swing_low", lastSwingLow, false, false);
+            sb.Append(","); AppendProp(sb, "recent_swing_high", recentSwingHigh, false, false);
+            sb.Append(","); AppendProp(sb, "recent_swing_low", recentSwingLow, false, false);
+
+            // Market condition ADX/DI (placeholder values if not available)
+            double adx = GetIndicatorValue(_adx14, 0);
+            double diPlus = 0.0;
+            double diMinus = 0.0;
+            sb.Append(","); AppendProp(sb, "adx_14", adx, false, false);
+            sb.Append(","); AppendProp(sb, "di_plus_14", diPlus, false, false);
+            sb.Append(","); AppendProp(sb, "di_minus_14", diMinus, false, false);
+
+            // Volume divergence swing flags (reuse ext swing pattern)
+            bool isSwingHigh = smc != null && smc.ExtSwingPattern != null && HasSeriesValue(smc.ExtSwingPattern, 0) && smc.ExtSwingPattern[0] == 1;
+            bool isSwingLow = smc != null && smc.ExtSwingPattern != null && HasSeriesValue(smc.ExtSwingPattern, 0) && smc.ExtSwingPattern[0] == -1;
+            sb.Append(","); AppendProp(sb, "is_swing_high", isSwingHigh, false, false);
+            sb.Append(","); AppendProp(sb, "is_swing_low", isSwingLow, false, false);
+
+            // HTF placeholders
+            sb.Append(","); AppendProp(sb, "htf_high", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "htf_low", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "htf_close", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "htf_ema_20", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "htf_ema_50", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "htf_is_swing_high", false, false, false);
+            sb.Append(","); AppendProp(sb, "htf_is_swing_low", false, false, false);
+
+            // Liquidity placeholders (until dedicated module available)
+            sb.Append(","); AppendProp(sb, "nearest_liquidity_high", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "nearest_liquidity_low", 0.0, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "liquidity_high_type", "none", false);
+            sb.Append(","); AppendPropNullableString(sb, "liquidity_low_type", "none", false);
+
             // Reason
             sb.Append(",\"reason\":[");
             bool firstReason = true;
@@ -523,6 +686,17 @@ namespace NinjaTrader.NinjaScript.Indicators
         {
             if (barsAgo < 0) barsAgo = 0;
             if (barsAgo > CurrentBar) barsAgo = CurrentBar;
+
+            // Local volume/delta for this barsAgo
+            double totalVol = 0.0;
+            try { totalVol = Volumes[0][barsAgo]; } catch { totalVol = 0.0; }
+            double deltaClose = 0.0;
+            double cumDelta = 0.0;
+            if (UseVolumeDelta && _volumdelta != null)
+            {
+                try { deltaClose = _volumdelta.DeltasClose[barsAgo]; } catch { deltaClose = 0.0; }
+                try { cumDelta = _volumdelta.DeltasClosecum[barsAgo]; } catch { cumDelta = 0.0; }
+            }
 
             sb.Append("{");
 
@@ -591,10 +765,10 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "fvg_bottom", fvgBottom, false, false);
             sb.Append(","); AppendProp(sb, "fvg_bar_index", fvgBarIndex, false, false);
             sb.Append(","); AppendProp(sb, "fvg_gap_size", fvgGap, false, false);
-            sb.Append(","); AppendProp(sb, "fvg_filled", false, false); // not tracked, default false
-            sb.Append(","); AppendProp(sb, "fvg_fill_percentage", double.NaN, false, false);
-            sb.Append(","); AppendProp(sb, "fvg_creation_volume", double.NaN, false, false);
-            sb.Append(","); AppendProp(sb, "fvg_creation_delta", double.NaN, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_filled", false, false, false); // not tracked, default false
+            sb.Append(","); AppendProp(sb, "fvg_fill_percentage", 0.0, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_volume", totalVol, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_delta", deltaClose, false, false);
 
             // OB details (nearest/active)
             int obDir = 0;
@@ -944,7 +1118,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         {
             try
             {
-                using (StreamWriter sw = new StreamWriter(path, true, Encoding.UTF8))
+                using (StreamWriter sw = new StreamWriter(path, true, new UTF8Encoding(false)))
                     sw.WriteLine(line);
             }
             catch { }
