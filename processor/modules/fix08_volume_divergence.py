@@ -22,8 +22,10 @@ class VolumeDivergenceModule(BaseModule):
             "lookback_swings": 10,  # Number of bars to look back for swings
             "min_swing_distance": 3,  # Minimum bars between swings
             "divergence_threshold": 0.1,  # Minimum delta difference ratio
+            "min_price_ratio": 0.0005,  # Filter tiny price changes
         }
         self._swing_history: List[Dict[str, Any]] = []
+        self._last_symbol: str | None = None
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
@@ -33,6 +35,8 @@ class VolumeDivergenceModule(BaseModule):
             return bar_state
 
         history = history or []
+
+        self._maybe_reset(bar_state)
 
         # Update swing history if current bar is a swing
         self._update_swing_history(bar_state, history)
@@ -48,6 +52,20 @@ class VolumeDivergenceModule(BaseModule):
             "divergence_swing_count": divergence_info["swing_count"],
             "divergence_bars_ago": divergence_info["bars_ago"],
         }
+        # Track symbol to reset when switching streams/files
+        symbol = bar_state.get("symbol")
+        if symbol and symbol != self._last_symbol:
+            self._swing_history = []
+            self._last_symbol = symbol
+
+    def _maybe_reset(self, bar_state: Dict[str, Any]) -> None:
+        """Reset swing history on symbol change or early bars."""
+        symbol = bar_state.get("symbol")
+        if symbol and symbol != self._last_symbol:
+            self._swing_history = []
+            self._last_symbol = symbol
+        if bar_state.get("bar_index", 0) <= 1:
+            self._swing_history = []
 
     def _update_swing_history(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]]
@@ -106,9 +124,14 @@ class VolumeDivergenceModule(BaseModule):
             if prev_swing_low:
                 # Bullish divergence: Lower low in price, higher delta
                 price_lower = current_price_low < prev_swing_low["low"]
-                delta_higher = current_delta > prev_swing_low["delta"]
+                price_move_ok = self._passes_price_filter(
+                    current_price_low, prev_swing_low["low"]
+                )
+                delta_higher = self._delta_ratio_ok(
+                    current_delta, prev_swing_low["delta"], expect_increase=True
+                )
 
-                if price_lower and delta_higher:
+                if price_lower and price_move_ok and delta_higher:
                     strength = self._calculate_divergence_strength(
                         current_price_low,
                         prev_swing_low["low"],
@@ -132,9 +155,14 @@ class VolumeDivergenceModule(BaseModule):
             if prev_swing_high:
                 # Bearish divergence: Higher high in price, lower delta
                 price_higher = current_price_high > prev_swing_high["high"]
-                delta_lower = current_delta < prev_swing_high["delta"]
+                price_move_ok = self._passes_price_filter(
+                    current_price_high, prev_swing_high["high"]
+                )
+                delta_lower = self._delta_ratio_ok(
+                    current_delta, prev_swing_high["delta"], expect_increase=False
+                )
 
-                if price_higher and delta_lower:
+                if price_higher and price_move_ok and delta_lower:
                     strength = self._calculate_divergence_strength(
                         current_price_high,
                         prev_swing_high["high"],
@@ -188,3 +216,18 @@ class VolumeDivergenceModule(BaseModule):
         strength = 0.4 * min(price_diff_pct * 10, 1.0) + 0.6 * min(delta_diff_pct, 1.0)
 
         return min(strength, 1.0)
+
+    def _delta_ratio_ok(self, newer_delta: float, older_delta: float, expect_increase: bool) -> bool:
+        """Check delta difference ratio passes threshold."""
+        base = max(abs(older_delta), 1)
+        diff = newer_delta - older_delta if expect_increase else older_delta - newer_delta
+        diff_ratio = diff / base
+        return diff_ratio >= self.config["divergence_threshold"]
+
+    def _passes_price_filter(self, newer_price: float, older_price: float) -> bool:
+        """Filter tiny price changes to reduce noise."""
+        if older_price == 0:
+            return False
+        return abs(newer_price - older_price) / older_price >= self.config[
+            "min_price_ratio"
+        ]

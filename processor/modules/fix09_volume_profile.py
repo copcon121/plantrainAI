@@ -64,6 +64,7 @@ class VolumeProfileModule(BaseModule):
             "low": bar_state.get("low", 0),
             "close": bar_state.get("close", 0),
             "volume": bar_state.get("volume", 0),
+            "tick_size": bar_state.get("tick_size"),
         }
         self._session_data.append(bar_data)
 
@@ -90,9 +91,12 @@ class VolumeProfileModule(BaseModule):
         if price_range <= 0:
             return {"vah": price_high, "val": price_low, "poc": (price_high + price_low) / 2}
 
-        # Create price bins
-        num_bins = self.config["price_bins"]
-        bin_size = price_range / num_bins
+        # Create price bins (tick-aware if provided)
+        tick_size = next((b.get("tick_size") for b in self._session_data if b.get("tick_size")), None)
+        base_bin = price_range / self.config["price_bins"]
+        bin_size = max(base_bin, tick_size) if tick_size else base_bin
+        num_bins = max(int(price_range / bin_size), 1)
+        bin_size = price_range / num_bins if num_bins > 0 else price_range
         bins = [0.0] * num_bins
 
         # Distribute volume to bins
@@ -129,29 +133,26 @@ class VolumeProfileModule(BaseModule):
         poc_bin = bins.index(max_vol)
         poc = price_low + (poc_bin + 0.5) * bin_size
 
-        # Find Value Area (70% of volume)
+        # Find Value Area (70% of volume) using top-volume bins around POC
         target_vol = total_volume * self.config["value_area_pct"]
+        included_indices = set([poc_bin])
         accumulated_vol = bins[poc_bin]
 
-        va_low_bin = poc_bin
-        va_high_bin = poc_bin
-
-        while accumulated_vol < target_vol:
-            # Expand in direction with more volume
-            low_vol = bins[va_low_bin - 1] if va_low_bin > 0 else 0
-            high_vol = bins[va_high_bin + 1] if va_high_bin < num_bins - 1 else 0
-
-            if low_vol >= high_vol and va_low_bin > 0:
-                va_low_bin -= 1
-                accumulated_vol += bins[va_low_bin]
-            elif va_high_bin < num_bins - 1:
-                va_high_bin += 1
-                accumulated_vol += bins[va_high_bin]
-            elif va_low_bin > 0:
-                va_low_bin -= 1
-                accumulated_vol += bins[va_low_bin]
-            else:
+        bin_order = sorted(
+            [(i, v) for i, v in enumerate(bins)],
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        for idx, vol in bin_order:
+            if accumulated_vol >= target_vol:
                 break
+            if idx in included_indices:
+                continue
+            included_indices.add(idx)
+            accumulated_vol += vol
+
+        va_low_bin = min(included_indices)
+        va_high_bin = max(included_indices)
 
         vah = price_low + (va_high_bin + 1) * bin_size
         val = price_low + va_low_bin * bin_size

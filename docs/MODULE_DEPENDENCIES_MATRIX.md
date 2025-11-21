@@ -212,6 +212,9 @@ ELSE:
 | `low` | float | Bar low | ATR percentile calc |
 | `close` | float | Bar close | Price context |
 | `current_trend` | string | Trend state | Confirmation |
+| `session_name` | string | Session tag | Regime filters |
+
+**Notes:** ATR percentile computed on 20/50-bar windows; DI diff is required to qualify trend. Python outputs `market_data_complete` flag when ATR/ADX/DI present.
 
 **Classifications:**
 - **Trend**: ADX > 25 = Trending, ADX < 20 = Ranging
@@ -233,6 +236,7 @@ ELSE:
 | `low` | float | Bar low | Swing price |
 | `bar_index` | int | Bar number | Distance calculation |
 | `close` | float | Bar close | Price context |
+| `symbol` | string | Instrument symbol | Reset divergence state per stream |
 
 **Divergence Logic:**
 ```
@@ -256,8 +260,9 @@ Bearish: Price HH + Delta less positive (cumulative)
 | `prev_session_val` | float | Prior VAL | Reference level |
 | `prev_session_poc` | float | Prior POC | Reference level |
 | `vp_session_volume` | int | Session volume | Normalization |
+| `tick_size` | float | Instrument tick size | Bin sizing |
 
-**Note:** If not available from Ninja, can calculate in Python from tick data.
+**Note:** If not available from Ninja, can calculate in Python from tick data. VAH/VAL computed from top-volume bins covering 70% around POC; tick_size improves binning accuracy.
 
 ---
 
@@ -274,6 +279,10 @@ Bearish: Price HH + Delta less positive (cumulative)
 | `htf_ema_50` | float | HTF 50 EMA | MA trend |
 | `htf_is_swing_high` | bool | HTF swing high | Structure trend |
 | `htf_is_swing_low` | bool | HTF swing low | Structure trend |
+| `htf_bos_type` | string | HTF BOS direction | Alignment |
+| `htf_bos_bars_ago` | int | Bars since HTF BOS | Recency |
+| `htf_choch_type` | string | HTF CHoCH direction | Alignment |
+| `htf_choch_bars_ago` | int | Bars since HTF CHoCH | Recency |
 | `current_trend` | string | LTF trend | Alignment check |
 | `fvg_type` | string | FVG direction | Alignment check |
 
@@ -307,6 +316,10 @@ Score: 0-3 -> Normalized to 0-1
 | `last_swing_low` | float | Recent swing | Liquidity candidate |
 | `high` | float | Current bar high | Sweep detection |
 | `low` | float | Current bar low | Sweep detection |
+| `eqh_price` | float | Equal highs price | Liquidity storage |
+| `eql_price` | float | Equal lows price | Liquidity storage |
+| `eqh_touches` | int | EQH touch count | Strength |
+| `eql_touches` | int | EQL touch count | Strength |
 
 **Sweep Detection:**
 ```
@@ -402,3 +415,4 @@ def validate_module_dependencies(bar: dict, module: str) -> list:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2024-11-21 | Initial matrix creation |
+| 1.1 | 2025-11-21 | Added tick_size for VP binning, HTF BOS/CHoCH fields, EQH/EQL touch counts, session_name for market condition, symbol reset for divergence, ATR percentile clarification. |

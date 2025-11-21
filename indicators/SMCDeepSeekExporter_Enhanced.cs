@@ -36,6 +36,22 @@ namespace NinjaTrader.NinjaScript.Indicators
         private bool _vdfInitialized = false;
         private ATR _atr14;
         private ADX _adx14;
+        private EMA _m5Ema20;
+        private EMA _m5Ema50;
+        private EMA _m15Ema20;
+        private EMA _m15Ema50;
+
+        // Index of added data series
+        private int _m5Index = -1;
+        private int _m15Index = -1;
+
+        // Simple DI+ / DI- buffers (manual calc to avoid missing indicator definitions)
+        private const int DiPeriod = 14;
+        private List<double> _trBuffer = new List<double>();
+        private List<double> _dmpBuffer = new List<double>();
+        private List<double> _dmmBuffer = new List<double>();
+        private double _diPlusValue = 0.0;
+        private double _diMinusValue = 0.0;
 
         private string exportFolder;
         private string currentDate;
@@ -115,6 +131,23 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
             else if (State == State.DataLoaded)
             {
+                // Compute indices of added series (order: primary M1 = 0, optional tick, then M5, then M15)
+                _m5Index = -1;
+                _m15Index = -1;
+                int idx = 1; // primary = 0
+                if (UseVolumeDelta)
+                    idx++; // tick series at 1
+                if (EnableM5Structure)
+                {
+                    _m5Index = idx;
+                    idx++;
+                }
+                if (EnableM15Structure)
+                {
+                    _m15Index = idx;
+                    idx++;
+                }
+
                 // Primary M1 SMC Structure with M5/M15 multi-timeframe support
                 // NOTE: The SMC indicator now handles M5/M15 internally!
                 try
@@ -149,6 +182,22 @@ namespace NinjaTrader.NinjaScript.Indicators
                 // Minimal ATR for export fields
                 try { _atr14 = ATR(BarsArray[0], 14); } catch { _atr14 = null; }
                 try { _adx14 = ADX(BarsArray[0], 14); } catch { _adx14 = null; }
+
+                // HTF EMAs if series available
+                try
+                {
+                    if (_m5Index >= 0)
+                    {
+                        _m5Ema20 = EMA(BarsArray[_m5Index], 20);
+                        _m5Ema50 = EMA(BarsArray[_m5Index], 50);
+                    }
+                    if (_m15Index >= 0)
+                    {
+                        _m15Ema20 = EMA(BarsArray[_m15Index], 20);
+                        _m15Ema50 = EMA(BarsArray[_m15Index], 50);
+                    }
+                }
+                catch { _m5Ema20 = _m5Ema50 = _m15Ema20 = _m15Ema50 = null; }
 
                 // NOTE: Volumdelta will be initialized later in OnBarUpdate
                 // when all data series are ready
@@ -194,6 +243,9 @@ namespace NinjaTrader.NinjaScript.Indicators
                 }
                 _vdfInitialized = true;
             }
+
+            if (CurrentBar > 0)
+                UpdateDirectionalMovement();
 
             if (smc == null) return;
             if (exportFolder == null || exportFolder == string.Empty) return;
@@ -438,6 +490,41 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append("}");
         }
 
+        private void UpdateDirectionalMovement()
+        {
+            if (CurrentBar == 0) return;
+
+            double prevClose = Close[1];
+            double tr = Math.Max(High[0] - Low[0], Math.Max(Math.Abs(High[0] - prevClose), Math.Abs(Low[0] - prevClose)));
+            double upMove = High[0] - High[1];
+            double downMove = Low[1] - Low[0];
+            double dmPlus = (upMove > downMove && upMove > 0) ? upMove : 0.0;
+            double dmMinus = (downMove > upMove && downMove > 0) ? downMove : 0.0;
+
+            _trBuffer.Add(tr);
+            _dmpBuffer.Add(dmPlus);
+            _dmmBuffer.Add(dmMinus);
+            if (_trBuffer.Count > DiPeriod) _trBuffer.RemoveAt(0);
+            if (_dmpBuffer.Count > DiPeriod) _dmpBuffer.RemoveAt(0);
+            if (_dmmBuffer.Count > DiPeriod) _dmmBuffer.RemoveAt(0);
+
+            double sumTr = 0.0, sumDmp = 0.0, sumDmm = 0.0;
+            for (int i = 0; i < _trBuffer.Count; i++) sumTr += _trBuffer[i];
+            for (int i = 0; i < _dmpBuffer.Count; i++) sumDmp += _dmpBuffer[i];
+            for (int i = 0; i < _dmmBuffer.Count; i++) sumDmm += _dmmBuffer[i];
+
+            if (sumTr > 0)
+            {
+                _diPlusValue = 100.0 * sumDmp / sumTr;
+                _diMinusValue = 100.0 * sumDmm / sumTr;
+            }
+            else
+            {
+                _diPlusValue = 0.0;
+                _diMinusValue = 0.0;
+            }
+        }
+
 
         #endregion
 
@@ -631,10 +718,10 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "recent_swing_high", recentSwingHigh, false, false);
             sb.Append(","); AppendProp(sb, "recent_swing_low", recentSwingLow, false, false);
 
-            // Market condition ADX/DI (placeholder values if not available)
+            // Market condition ADX/DI
             double adx = GetIndicatorValue(_adx14, 0);
-            double diPlus = 0.0;
-            double diMinus = 0.0;
+            double diPlus = _diPlusValue;
+            double diMinus = _diMinusValue;
             sb.Append(","); AppendProp(sb, "adx_14", adx, false, false);
             sb.Append(","); AppendProp(sb, "di_plus_14", diPlus, false, false);
             sb.Append(","); AppendProp(sb, "di_minus_14", diMinus, false, false);
@@ -645,20 +732,47 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "is_swing_high", isSwingHigh, false, false);
             sb.Append(","); AppendProp(sb, "is_swing_low", isSwingLow, false, false);
 
-            // HTF placeholders
-            sb.Append(","); AppendProp(sb, "htf_high", 0.0, false, false);
-            sb.Append(","); AppendProp(sb, "htf_low", 0.0, false, false);
-            sb.Append(","); AppendProp(sb, "htf_close", 0.0, false, false);
-            sb.Append(","); AppendProp(sb, "htf_ema_20", 0.0, false, false);
-            sb.Append(","); AppendProp(sb, "htf_ema_50", 0.0, false, false);
+            // HTF data (prefer M15, fallback M5)
+            double htfHigh = 0.0, htfLow = 0.0, htfClose = 0.0, htfEma20 = 0.0, htfEma50 = 0.0;
+            if (_m15Index >= 0)
+            {
+                htfHigh = GetSeriesValueSafe(Highs[_m15Index], 0);
+                htfLow = GetSeriesValueSafe(Lows[_m15Index], 0);
+                htfClose = GetSeriesValueSafe(Closes[_m15Index], 0);
+                htfEma20 = GetIndicatorValue(_m15Ema20, 0);
+                htfEma50 = GetIndicatorValue(_m15Ema50, 0);
+            }
+            else if (_m5Index >= 0)
+            {
+                htfHigh = GetSeriesValueSafe(Highs[_m5Index], 0);
+                htfLow = GetSeriesValueSafe(Lows[_m5Index], 0);
+                htfClose = GetSeriesValueSafe(Closes[_m5Index], 0);
+                htfEma20 = GetIndicatorValue(_m5Ema20, 0);
+                htfEma50 = GetIndicatorValue(_m5Ema50, 0);
+            }
+            if (double.IsNaN(htfHigh)) htfHigh = 0.0;
+            if (double.IsNaN(htfLow)) htfLow = 0.0;
+            if (double.IsNaN(htfClose)) htfClose = 0.0;
+            if (double.IsNaN(htfEma20)) htfEma20 = 0.0;
+            if (double.IsNaN(htfEma50)) htfEma50 = 0.0;
+
+            sb.Append(","); AppendProp(sb, "htf_high", htfHigh, false, false);
+            sb.Append(","); AppendProp(sb, "htf_low", htfLow, false, false);
+            sb.Append(","); AppendProp(sb, "htf_close", htfClose, false, false);
+            sb.Append(","); AppendProp(sb, "htf_ema_20", htfEma20, false, false);
+            sb.Append(","); AppendProp(sb, "htf_ema_50", htfEma50, false, false);
             sb.Append(","); AppendProp(sb, "htf_is_swing_high", false, false, false);
             sb.Append(","); AppendProp(sb, "htf_is_swing_low", false, false, false);
 
-            // Liquidity placeholders (until dedicated module available)
-            sb.Append(","); AppendProp(sb, "nearest_liquidity_high", 0.0, false, false);
-            sb.Append(","); AppendProp(sb, "nearest_liquidity_low", 0.0, false, false);
-            sb.Append(","); AppendPropNullableString(sb, "liquidity_high_type", "none", false);
-            sb.Append(","); AppendPropNullableString(sb, "liquidity_low_type", "none", false);
+            // Liquidity: fall back to recent swings if no dedicated map
+            double nearestLiquidityHigh = lastSwingHigh;
+            double nearestLiquidityLow = lastSwingLow;
+            string liquidityHighType = nearestLiquidityHigh != 0.0 ? "swing_high" : "none";
+            string liquidityLowType = nearestLiquidityLow != 0.0 ? "swing_low" : "none";
+            sb.Append(","); AppendProp(sb, "nearest_liquidity_high", nearestLiquidityHigh, false, false);
+            sb.Append(","); AppendProp(sb, "nearest_liquidity_low", nearestLiquidityLow, false, false);
+            sb.Append(","); AppendPropNullableString(sb, "liquidity_high_type", liquidityHighType, false);
+            sb.Append(","); AppendPropNullableString(sb, "liquidity_low_type", liquidityLowType, false);
 
             // Reason
             sb.Append(",\"reason\":[");
@@ -1149,6 +1263,19 @@ namespace NinjaTrader.NinjaScript.Indicators
         {
             if (!HasSeriesValue(s, barsAgo)) return 0.0;
             return s[barsAgo];
+        }
+
+        private double GetSeriesValueSafe(ISeries<double> s, int barsAgo)
+        {
+            if (s == null) return 0.0;
+            if (barsAgo < 0 || CurrentBar - barsAgo < 0) return 0.0;
+            try
+            {
+                double v = s[barsAgo];
+                if (double.IsNaN(v) || double.IsInfinity(v)) return 0.0;
+                return v;
+            }
+            catch { return 0.0; }
         }
 
         private string GetSessionTag()

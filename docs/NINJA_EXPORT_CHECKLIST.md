@@ -1,6 +1,6 @@
 # NINJA EXPORT CHECKLIST
 
-## VERSION: 1.1
+## VERSION: 1.2
 ## PURPOSE: Comprehensive list of all fields required from NinjaTrader for all modules
 ## LAST UPDATED: November 21, 2025
 
@@ -394,6 +394,10 @@ jsonBuilder.Append($"\"di_minus_14\": {adx.DiMinus[0]}, ");
 | `htf_ema_50` | float | HTF 50 EMA (optional) | Module #10 |
 | `htf_is_swing_high` | bool | HTF swing high | Module #10 |
 | `htf_is_swing_low` | bool | HTF swing low | Module #10 |
+| `htf_bos_type` | string | HTF BOS direction | Module #10 |
+| `htf_bos_bars_ago` | int | Bars since HTF BOS | Module #10 |
+| `htf_choch_type` | string | HTF CHoCH direction | Module #10 |
+| `htf_choch_bars_ago` | int | Bars since HTF CHoCH | Module #10 |
 
 ```csharp
 // NinjaScript Example - Multi-series
@@ -434,9 +438,11 @@ if (BarsInProgress == 0)  // Primary series (5m)
 | `eqh_detected` | bool | Equal Highs detected at this bar? | Module #11 |
 | `eqh_price` | float | Price level of equal highs | Module #11 |
 | `eqh_count` | int | Number of touches at this level | Module #11 |
+| `eqh_touches` | int | Touch count (alias/count) | Module #11 |
 | `eql_detected` | bool | Equal Lows detected at this bar? | Module #11 |
 | `eql_price` | float | Price level of equal lows | Module #11 |
 | `eql_count` | int | Number of touches at this level | Module #11 |
+| `eql_touches` | int | Touch count (alias/count) | Module #11 |
 
 ```csharp
 // NinjaScript Example - EQH/EQL Detection
@@ -463,6 +469,7 @@ jsonBuilder.Append($"\"eql_count\": {eqlCount}, ");
 | `vp_developing_poc` | float | Developing POC (updates each bar) | Module #09 |
 | `vp_high_volume_nodes` | string | JSON array of HVN prices | Module #09 |
 | `vp_low_volume_nodes` | string | JSON array of LVN prices | Module #09 |
+| `tick_size` | float | Tick size (if per-bar different instrument) | Module #09 bin sizing |
 
 **Note:** Volume Profile can be calculated in Python from tick data, but if NinjaTrader has built-in VP indicator, exporting these fields saves computation.
 
@@ -765,6 +772,7 @@ Additional fields for enhanced analysis:
 |---------|------|---------|
 | 1.0 | 2024-XX-XX | Initial checklist with 55 fields |
 | 1.1 | 2024-11-21 | Added: Meta/Instrument (7), Session/Time (7), Prev Session (6), Data Quality (5), EQH/EQL (6), VP (8), Expanded CHoCH/BOS (16). Total: ~102 fields |
+| 1.2 | 2025-11-21 | Added HTF BOS/CHoCH fields, EQH/EQL touch counts, tick_size note for VP binning, clarified DI/ATR percentile use in Market Condition. |
 
 ---
 

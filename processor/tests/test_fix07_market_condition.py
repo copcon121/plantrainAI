@@ -18,6 +18,7 @@ class TestMarketConditionModule:
             "close": 100.45,
             "volume": 4500,
             "atr_14": 0.22,
+            "session_name": "NY_AM",
         }
 
     def test_strong_trend_bullish(self):
@@ -34,6 +35,7 @@ class TestMarketConditionModule:
         assert result["market_trend"] == "trending"
         assert result["market_trend_direction"] == 1
         assert result["adx_class"] == "strong"
+        assert result["market_data_complete"] is True
 
     def test_strong_trend_bearish(self):
         """Test strong bearish trend classification."""
@@ -48,6 +50,7 @@ class TestMarketConditionModule:
 
         assert result["market_trend"] == "trending"
         assert result["market_trend_direction"] == -1
+        assert result["market_data_complete"] is True
 
     def test_ranging_market(self):
         """Test ranging market classification."""
@@ -78,6 +81,7 @@ class TestMarketConditionModule:
 
         assert result["volatility_regime"] == "high"
         assert result["volatility_percentile"] > 75
+        assert result["market_data_complete"] is True
 
     def test_volatility_low_regime(self):
         """Test low volatility regime classification."""
@@ -94,6 +98,7 @@ class TestMarketConditionModule:
 
         assert result["volatility_regime"] == "low"
         assert result["volatility_percentile"] < 25
+        assert result["market_data_complete"] is True
 
     def test_favorable_environment(self):
         """Test favorable trading environment detection."""
@@ -110,6 +115,7 @@ class TestMarketConditionModule:
 
         assert result["market_condition"] == "trending_strong"
         assert result["trade_environment"] == "favorable"
+        assert result["market_data_complete"] is True
 
     def test_unfavorable_environment(self):
         """Test unfavorable trading environment detection."""
@@ -138,6 +144,17 @@ class TestMarketConditionModule:
         result = self.module.process_bar(bar)
 
         assert 0.0 <= result["market_condition_score"] <= 1.0
+
+    def test_missing_di_marks_data_incomplete(self):
+        """Missing DI/ADX should mark data incomplete."""
+        bar = {
+            **self.base_bar,
+            "adx_14": 0.0,
+            "di_plus_14": 0.0,
+            "di_minus_14": 0.0,
+        }
+        result = self.module.process_bar(bar)
+        assert result["market_data_complete"] is False
 
     def test_atr_vs_avg_calculation(self):
         """Test ATR vs average calculation."""

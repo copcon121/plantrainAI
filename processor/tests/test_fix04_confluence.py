@@ -28,6 +28,7 @@ class TestConfluenceModule:
         assert result["confluence_score"] == 0.0
         assert result["confluence_class"] == "None"
         assert result["confluence_factor_count"] == 0
+        assert result["confluence_data_complete"] is False
 
     def test_confluence_score_range(self):
         """Test confluence score is between 0 and 1."""
@@ -117,7 +118,8 @@ class TestConfluenceModule:
 
         result = self.module.process_bar(bar)
 
-        assert result["conf_ob_proximity"] == 0.0
+        assert result["conf_ob_proximity"] == 0.5
+        assert "ob_proximity" in result["confluence_missing_inputs"]
 
     def test_structure_score_expansion(self):
         """Test structure score for expansion context."""
@@ -147,6 +149,7 @@ class TestConfluenceModule:
         result = self.module.process_bar(bar)
 
         assert isinstance(result["confluence_factors_list"], list)
+        assert "confluence_missing_inputs" in result
 
     def test_module_disabled_returns_input(self):
         """Test that disabled module returns input unchanged."""

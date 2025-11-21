@@ -61,6 +61,11 @@ class LiquidityMapModule(BaseModule):
         liq_high_type = bar_state.get("liquidity_high_type", nearest_info.get("high_type", ""))
         liq_low_type = bar_state.get("liquidity_low_type", nearest_info.get("low_type", ""))
 
+        eqh_price = equal_highs[0]["price"] if equal_highs else 0
+        eql_price = equal_lows[0]["price"] if equal_lows else 0
+        eqh_touches = equal_highs[0]["touches"] if equal_highs else 0
+        eql_touches = equal_lows[0]["touches"] if equal_lows else 0
+
         return {
             **bar_state,
             # Liquidity levels (use existing or calculated)
@@ -76,6 +81,10 @@ class LiquidityMapModule(BaseModule):
             # Equal level counts
             "equal_highs_count": len(equal_highs),
             "equal_lows_count": len(equal_lows),
+            "eqh_price": eqh_price,
+            "eql_price": eql_price,
+            "eqh_touches": eqh_touches,
+            "eql_touches": eql_touches,
         }
 
     def _update_swing_tracking(self, bar_state: Dict[str, Any]) -> None:
@@ -216,6 +225,7 @@ class LiquidityMapModule(BaseModule):
         bar_high = bar_state.get("high", 0)
         bar_low = bar_state.get("low", 0)
         bar_close = bar_state.get("close", 0)
+        bar_index = bar_state.get("bar_index", 0)
 
         for level in self._liquidity_levels:
             if level["swept"]:
@@ -233,7 +243,7 @@ class LiquidityMapModule(BaseModule):
                         "detected": True,
                         "type": f"sweep_above_{level_type}",
                         "level": price,
-                        "bars_ago": 0,
+                        "bars_ago": bar_index - level.get("bar_index", bar_index),
                     }
 
             # Check for sweep below
@@ -245,7 +255,7 @@ class LiquidityMapModule(BaseModule):
                         "detected": True,
                         "type": f"sweep_below_{level_type}",
                         "level": price,
-                        "bars_ago": 0,
+                        "bars_ago": bar_index - level.get("bar_index", bar_index),
                     }
 
         return default

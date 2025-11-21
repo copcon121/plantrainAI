@@ -12,6 +12,7 @@ class TestVolumeDivergenceModule:
         self.base_bar = {
             "bar_index": 100,
             "timestamp": "2024-01-15T10:45:00Z",
+            "symbol": "ES",
             "open": 100.15,
             "high": 100.55,
             "low": 100.05,
@@ -218,3 +219,28 @@ class TestVolumeDivergenceModule:
         self.module.process_bar(bar)
 
         assert bar == original_bar
+
+    def test_symbol_change_resets_history(self):
+        """Swing history should reset when symbol changes."""
+        prev_swing = {
+            **self.base_bar,
+            "bar_index": 50,
+            "is_swing_low": True,
+            "is_swing_high": False,
+            "low": 99.50,
+            "delta": 500,
+        }
+        self.module.process_bar(prev_swing)
+
+        new_symbol_swing = {
+            **self.base_bar,
+            "symbol": "NQ",
+            "bar_index": 60,
+            "is_swing_low": True,
+            "is_swing_high": False,
+            "low": 99.00,
+            "delta": 1500,
+        }
+
+        result = self.module.process_bar(new_symbol_swing)
+        assert result["divergence_detected"] is False

@@ -28,8 +28,9 @@ class MarketConditionModule(BaseModule):
             # Volatility percentile thresholds
             "high_vol_percentile": 75,
             "low_vol_percentile": 25,
-            # ATR lookback
-            "atr_lookback": 20,
+            # ATR lookback windows
+            "atr_lookback_short": 20,
+            "atr_lookback_long": 50,
         }
 
     def process_bar(
@@ -56,6 +57,12 @@ class MarketConditionModule(BaseModule):
         # Determine overall market condition
         condition = self._determine_market_condition(trend_info, vol_info)
 
+        data_complete = all([
+            adx is not None and adx > 0,
+            di_plus is not None and di_minus is not None,
+            atr is not None and atr > 0,
+        ])
+
         return {
             **bar_state,
             # Trend classification
@@ -71,6 +78,7 @@ class MarketConditionModule(BaseModule):
             "market_condition": condition["condition"],
             "market_condition_score": round(condition["score"], 3),
             "trade_environment": condition["environment"],
+            "market_data_complete": data_complete,
         }
 
     def _classify_trend(
@@ -121,24 +129,19 @@ class MarketConditionModule(BaseModule):
         self, current_atr: float, history: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Classify volatility regime using ATR percentile."""
-        atr_values = [b.get("atr_14", 0) for b in history[-self.config["atr_lookback"]:]]
-        atr_values.append(current_atr)
-        atr_values = [a for a in atr_values if a > 0]
+        short_vals = [b.get("atr_14", 0) for b in history[-self.config["atr_lookback_short"] :]]
+        long_vals = [b.get("atr_14", 0) for b in history[-self.config["atr_lookback_long"] :]]
+        values = [a for a in (short_vals + [current_atr]) if a and a > 0]
+        if len(values) < 5:
+            return {"regime": "normal", "percentile": 50.0, "atr_vs_avg": 1.0}
 
-        if len(atr_values) < 5:
-            return {
-                "regime": "normal",
-                "percentile": 50.0,
-                "atr_vs_avg": 1.0,
-            }
-
-        # Calculate percentile
-        sorted_atr = sorted(atr_values)
+        sorted_atr = sorted(values)
         rank = sum(1 for a in sorted_atr if a <= current_atr)
         percentile = (rank / len(sorted_atr)) * 100
 
-        # Calculate vs average
-        avg_atr = sum(atr_values) / len(atr_values)
+        # Average over long window if available
+        avg_base = [a for a in long_vals if a and a > 0] or values
+        avg_atr = sum(avg_base) / len(avg_base) if avg_base else 1.0
         atr_vs_avg = current_atr / avg_atr if avg_atr > 0 else 1.0
 
         # Classify regime
@@ -149,11 +152,7 @@ class MarketConditionModule(BaseModule):
         else:
             regime = "normal"
 
-        return {
-            "regime": regime,
-            "percentile": percentile,
-            "atr_vs_avg": atr_vs_avg,
-        }
+        return {"regime": regime, "percentile": percentile, "atr_vs_avg": atr_vs_avg}
 
     def _determine_market_condition(
         self, trend_info: Dict[str, Any], vol_info: Dict[str, Any]

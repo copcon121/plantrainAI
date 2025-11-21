@@ -48,7 +48,7 @@ class ConfluenceModule(BaseModule):
         history = history or []
 
         # Calculate individual factor scores
-        factor_scores = self._calculate_factor_scores(bar_state, history)
+        factor_scores, missing_inputs = self._calculate_factor_scores(bar_state, history)
 
         # Calculate weighted confluence score
         weighted_sum = sum(
@@ -81,22 +81,44 @@ class ConfluenceModule(BaseModule):
             "conf_volume": round(factor_scores["volume_confirm"], 3),
             "confluence_factor_count": len(contributing_factors),
             "confluence_factors_list": contributing_factors,
+            "confluence_data_complete": len(missing_inputs) == 0,
+            "confluence_missing_inputs": missing_inputs,
         }
 
     def _calculate_factor_scores(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+    ) -> tuple[Dict[str, float], List[str]]:
         """Calculate individual factor scores."""
-        return {
-            "ob_proximity": self._calc_ob_proximity_score(bar_state),
-            "structure_context": self._calc_structure_score(bar_state),
-            "fvg_strength": self._calc_fvg_strength_score(bar_state),
-            "mtf_alignment": self._calc_mtf_alignment_score(bar_state),
-            "liquidity_proximity": self._calc_liquidity_score(bar_state),
-            "volume_confirm": self._calc_volume_score(bar_state, history),
-        }
+        scores: Dict[str, float] = {}
+        missing: List[str] = []
 
-    def _calc_ob_proximity_score(self, bar_state: Dict[str, Any]) -> float:
+        scores["ob_proximity"], miss = self._calc_ob_proximity_score(bar_state)
+        if miss:
+            missing.append("ob_proximity")
+
+        scores["structure_context"], miss = self._calc_structure_score(bar_state)
+        if miss:
+            missing.append("structure_context")
+
+        scores["fvg_strength"], miss = self._calc_fvg_strength_score(bar_state)
+        if miss:
+            missing.append("fvg_strength")
+
+        scores["mtf_alignment"], miss = self._calc_mtf_alignment_score(bar_state)
+        if miss:
+            missing.append("mtf_alignment")
+
+        scores["liquidity_proximity"], miss = self._calc_liquidity_score(bar_state)
+        if miss:
+            missing.append("liquidity_proximity")
+
+        scores["volume_confirm"], miss = self._calc_volume_score(bar_state, history)
+        if miss:
+            missing.append("volume_confirm")
+
+        return scores, missing
+
+    def _calc_ob_proximity_score(self, bar_state: Dict[str, Any]) -> tuple[float, bool]:
         """Calculate OB proximity score."""
         fvg_top = bar_state.get("fvg_top", 0)
         fvg_bottom = bar_state.get("fvg_bottom", 0)
@@ -105,11 +127,11 @@ class ConfluenceModule(BaseModule):
         atr = bar_state.get("atr_14", 0.01)
 
         if ob_top is None or ob_bottom is None or fvg_top == 0:
-            return 0.0
+            return 0.5, True
 
         # Check if FVG is completely inside OB
         if fvg_top <= ob_top and fvg_bottom >= ob_bottom:
-            return 1.0
+            return 1.0, False
 
         # Check overlap
         overlap_top = min(fvg_top, ob_top)
@@ -120,7 +142,7 @@ class ConfluenceModule(BaseModule):
             overlap_size = overlap_top - overlap_bottom
             fvg_size = fvg_top - fvg_bottom
             overlap_ratio = overlap_size / fvg_size if fvg_size > 0 else 0
-            return 0.7 + (0.3 * overlap_ratio)
+            return 0.7 + (0.3 * overlap_ratio), False
 
         # Calculate distance
         if fvg_bottom > ob_top:
@@ -131,15 +153,15 @@ class ConfluenceModule(BaseModule):
         distance_atr = distance / atr if atr > 0 else float("inf")
 
         if distance_atr <= 0.5:
-            return 0.6
+            return 0.6, False
         elif distance_atr <= 1.0:
-            return 0.4
+            return 0.4, False
         elif distance_atr <= 2.0:
-            return 0.2
+            return 0.2, False
         else:
-            return 0.0
+            return 0.0, False
 
-    def _calc_structure_score(self, bar_state: Dict[str, Any]) -> float:
+    def _calc_structure_score(self, bar_state: Dict[str, Any]) -> tuple[float, bool]:
         """Calculate structure context score."""
         context_type = bar_state.get("structure_context", "unknown")
         context_multiplier = bar_state.get("structure_context_score", 1.0)
@@ -156,17 +178,19 @@ class ConfluenceModule(BaseModule):
         base_score = score_map.get(context_type, 0.3)
 
         if context_multiplier >= 1.2:
-            return min(1.0, base_score * 1.1)
+            return min(1.0, base_score * 1.1), False
         elif context_multiplier <= 0.8:
-            return base_score * 0.9
+            return base_score * 0.9, False
 
-        return base_score
+        return base_score, False
 
-    def _calc_fvg_strength_score(self, bar_state: Dict[str, Any]) -> float:
+    def _calc_fvg_strength_score(self, bar_state: Dict[str, Any]) -> tuple[float, bool]:
         """Get FVG strength score from Module #02."""
-        return bar_state.get("fvg_strength_score", 0.0)
+        if "fvg_strength_score" not in bar_state:
+            return 0.5, True
+        return bar_state.get("fvg_strength_score", 0.0), False
 
-    def _calc_mtf_alignment_score(self, bar_state: Dict[str, Any]) -> float:
+    def _calc_mtf_alignment_score(self, bar_state: Dict[str, Any]) -> tuple[float, bool]:
         """Calculate MTF alignment score."""
         fvg_type = bar_state.get("fvg_type", "")
         fvg_direction = 1 if fvg_type == "bullish" else -1
@@ -177,14 +201,14 @@ class ConfluenceModule(BaseModule):
         trend_direction = {"bullish": 1, "bearish": -1, "neutral": 0}.get(htf_trend, 0)
 
         if trend_direction == 0:
-            return 0.5
+            return 0.5, True
 
         if fvg_direction == trend_direction:
-            return 0.6 + (0.4 * htf_strength)
+            return 0.6 + (0.4 * htf_strength), False
         else:
-            return max(0.1, 0.4 - (0.3 * htf_strength))
+            return max(0.1, 0.4 - (0.3 * htf_strength)), False
 
-    def _calc_liquidity_score(self, bar_state: Dict[str, Any]) -> float:
+    def _calc_liquidity_score(self, bar_state: Dict[str, Any]) -> tuple[float, bool]:
         """Calculate liquidity proximity score."""
         fvg_type = bar_state.get("fvg_type", "bullish")
         atr = bar_state.get("atr_14", 0.01)
@@ -198,7 +222,7 @@ class ConfluenceModule(BaseModule):
             current = bar_state.get("close", 0)
 
         if liq_price == 0 or current == 0:
-            return 0.3
+            return 0.5, True
 
         distance = abs(liq_price - current)
         distance_atr = distance / atr if atr > 0 else float("inf")
@@ -219,11 +243,11 @@ class ConfluenceModule(BaseModule):
         if liq_type in ["equal_highs", "equal_lows"]:
             base_score = min(1.0, base_score * 1.1)
 
-        return base_score
+        return base_score, False
 
     def _calc_volume_score(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]]
-    ) -> float:
+    ) -> tuple[float, bool]:
         """Calculate volume confirmation score."""
         fvg_volume = bar_state.get("fvg_creation_volume", bar_state.get("volume", 0))
         delta_alignment = bar_state.get("fvg_delta_alignment", 0)
@@ -237,7 +261,7 @@ class ConfluenceModule(BaseModule):
             median_vol = sorted_vols[len(sorted_vols) // 2]
 
         if median_vol == 0:
-            return 0.5
+            return 0.5, True
 
         vol_ratio = fvg_volume / median_vol
 
@@ -256,7 +280,7 @@ class ConfluenceModule(BaseModule):
         elif delta_alignment == -1:
             base_score = base_score * 0.8
 
-        return base_score
+        return base_score, False
 
     def _default_output(self) -> Dict[str, Any]:
         """Default output when no FVG."""
@@ -271,4 +295,6 @@ class ConfluenceModule(BaseModule):
             "conf_volume": 0.0,
             "confluence_factor_count": 0,
             "confluence_factors_list": [],
+            "confluence_data_complete": False,
+            "confluence_missing_inputs": [],
         }

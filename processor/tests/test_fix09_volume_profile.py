@@ -18,6 +18,7 @@ class TestVolumeProfileModule:
             "close": 100.45,
             "volume": 4500,
             "atr_14": 0.22,
+            "tick_size": 0.01,
         }
 
     def test_insufficient_data_returns_zeros(self):

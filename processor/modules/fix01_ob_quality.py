@@ -20,6 +20,12 @@ class OBQualityModule(BaseModule):
 
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
+        self.config = {
+            "volume_median_period": 20,
+            "max_ob_age_bars": 30,
+            "require_sweep": True,
+            "require_flip_flag": False,  # allows enforcement if indicator supplies ob_flip_valid
+        }
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
@@ -28,18 +34,24 @@ class OBQualityModule(BaseModule):
         if not self.enabled:
             return bar_state
 
+        history = history or []
+
         # Check if OB detected
         if not bar_state.get("ob_detected", False):
             return {**bar_state, **self._default_output()}
 
-        history = history or []
+        eligibility, reason = self._check_eligibility(bar_state, history)
+        if not eligibility:
+            return {**bar_state, **self._default_output(reason)}
 
         # Calculate each component
         displacement_rr = self._calculate_displacement_rr(bar_state)
         displacement_score = min(displacement_rr / 4.0, 1.0)
 
-        historical_volumes = [b.get("volume", 0) for b in history[-20:]]
-        ob_volume = bar_state.get("ob_volume", bar_state.get("volume", 0))
+        historical_volumes = [
+            b.get("volume", 0) for b in history[-self.config["volume_median_period"] :]
+        ]
+        ob_volume = bar_state.get("ob_volume", bar_state.get("volume", 0) or 0)
         volume_factor = self._calculate_volume_factor(ob_volume, historical_volumes)
         volume_score = min(max((volume_factor - 1.0) / 2.0, 0.0), 1.0)
 
@@ -70,7 +82,40 @@ class OBQualityModule(BaseModule):
             "ob_delta_imbalance": round(delta_imbalance, 3),
             "ob_displacement_rr": round(displacement_rr, 2),
             "ob_liquidity_sweep": liquidity_sweep,
+            "ob_valid": True,
+            "ob_invalid_reason": "",
         }
+
+    def _check_eligibility(
+        self, bar_state: Dict[str, Any], history: List[Dict[str, Any]]
+    ) -> tuple[bool, str]:
+        """Validate required OB inputs and conditions before scoring."""
+        required_fields = ["ob_high", "ob_low", "ob_direction"]
+        for field in required_fields:
+            if bar_state.get(field) in (None, 0):
+                return False, f"missing_{field}"
+
+        # Time-in-range guard
+        current_bar = bar_state.get("bar_index", len(history))
+        ob_bar_index = bar_state.get("ob_bar_index", current_bar)
+        if current_bar - ob_bar_index > self.config["max_ob_age_bars"]:
+            return False, "stale_ob"
+
+        # Optional flip validation if provided by exporter
+        if self.config["require_flip_flag"]:
+            flip_valid = bar_state.get("ob_flip_valid")
+            if flip_valid is False or flip_valid is None:
+                return False, "no_flip"
+
+        # Require sweep if configured (use detection with available history)
+        if self.config["require_sweep"]:
+            sweep = self._detect_liquidity_sweep(
+                history + [bar_state], len(history), bar_state.get("ob_direction", "bull")
+            )
+            if not sweep:
+                return False, "no_sweep"
+
+        return True, ""
 
     def _calculate_displacement_rr(self, ob_data: Dict[str, Any]) -> float:
         """Calculate OB displacement RR ratio."""
@@ -115,10 +160,13 @@ class OBQualityModule(BaseModule):
         if not historical_volumes:
             return 1.0
 
-        if len(historical_volumes) < 20:
-            median_vol = sum(historical_volumes) / len(historical_volumes) if historical_volumes else 1
+        lookback = self.config["volume_median_period"]
+        if len(historical_volumes) < lookback:
+            median_vol = (
+                sum(historical_volumes) / len(historical_volumes) if historical_volumes else 1
+            )
         else:
-            sorted_vols = sorted(historical_volumes[-20:])
+            sorted_vols = sorted(historical_volumes[-lookback:])
             mid = len(sorted_vols) // 2
             median_vol = sorted_vols[mid]
 
@@ -176,7 +224,7 @@ class OBQualityModule(BaseModule):
 
         return False
 
-    def _default_output(self) -> Dict[str, Any]:
+    def _default_output(self, reason: str = "no_ob") -> Dict[str, Any]:
         """Default output when module disabled or no OB."""
         return {
             "ob_strength_score": 0.0,
@@ -184,4 +232,6 @@ class OBQualityModule(BaseModule):
             "ob_delta_imbalance": 0.0,
             "ob_displacement_rr": 0.0,
             "ob_liquidity_sweep": False,
+            "ob_valid": False,
+            "ob_invalid_reason": reason,
         }

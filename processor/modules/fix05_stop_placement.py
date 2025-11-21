@@ -46,7 +46,7 @@ class StopPlacementModule(BaseModule):
 
         # Only calculate for FVG signals
         if not bar_state.get("fvg_detected", False):
-            return {**bar_state, **self._default_output()}
+            return {**bar_state, **self._default_output(reason="no_fvg")}
 
         # Get required fields
         fvg_type = bar_state.get("fvg_type", "bullish")
@@ -61,6 +61,14 @@ class StopPlacementModule(BaseModule):
         swing_high = bar_state.get("last_swing_high")
         swing_low = bar_state.get("last_swing_low")
         fvg_strength = bar_state.get("fvg_strength_class", "Medium")
+
+        # Basic validation
+        if not atr or atr <= 0:
+            return {**bar_state, **self._default_output(reason="invalid_atr")}
+        if fvg_top == 0 or fvg_bottom == 0:
+            return {**bar_state, **self._default_output(reason="missing_fvg_levels")}
+        if entry_price == 0 or entry_price is None:
+            return {**bar_state, **self._default_output(reason="missing_entry")}
 
         # Calculate all stop options
         all_options = []
@@ -87,7 +95,7 @@ class StopPlacementModule(BaseModule):
         )
 
         if result is None:
-            return {**bar_state, **self._default_output()}
+            return {**bar_state, **self._default_output(reason="no_valid_stop")}
 
         return {
             **bar_state,
@@ -264,7 +272,7 @@ class StopPlacementModule(BaseModule):
 
         return None
 
-    def _default_output(self) -> Dict[str, Any]:
+    def _default_output(self, reason: str = "no_fvg") -> Dict[str, Any]:
         """Default output when no valid stop."""
         return {
             "stop_price": 0.0,
@@ -274,5 +282,5 @@ class StopPlacementModule(BaseModule):
             "stop_invalidation_level": 0.0,
             "stop_buffer": 0.0,
             "stop_valid": False,
-            "stop_reason": "no_fvg",
+            "stop_reason": reason,
         }

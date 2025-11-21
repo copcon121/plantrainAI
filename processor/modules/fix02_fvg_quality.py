@@ -25,6 +25,8 @@ class FVGQualityModule(BaseModule):
             "strong_delta_ratio": 0.6,
             "medium_size_atr": 0.8,
             "volume_median_period": 20,
+            "max_age_bars": 50,
+            "fill_penalty_start": 0.25,
         }
 
     def process_bar(
@@ -45,8 +47,11 @@ class FVGQualityModule(BaseModule):
         # Check Value Area context
         va_info = self._check_va_context(bar_state)
 
+        # Compute age/fill information
+        lifecycle_info = self._calculate_fill_and_age(bar_state)
+
         # Determine Value Class
-        value_class = self._determine_value_class(strength_info, va_info)
+        value_class = self._determine_value_class(strength_info, va_info, lifecycle_info)
 
         # Build context string
         context = self._build_context_string(
@@ -54,12 +59,15 @@ class FVGQualityModule(BaseModule):
         )
 
         # Calculate composite quality score
-        quality_score = self._calculate_composite_score(strength_info, va_info)
+        quality_score = self._calculate_composite_score(
+            strength_info, va_info, lifecycle_info
+        )
 
         return {
             **bar_state,
             **strength_info,
             **va_info,
+            **lifecycle_info,
             "fvg_value_class": value_class,
             "fvg_quality_score": round(quality_score, 4),
             "fvg_context": context,
@@ -82,7 +90,7 @@ class FVGQualityModule(BaseModule):
         gap_quality = min(fvg_size_atr / 2.0, 1.0)
 
         # 2. Volume relative to median
-        volume_median = self._get_volume_median(history, 20)
+        volume_median = self._get_volume_median(history, self.config["volume_median_period"])
         fvg_vol_ratio = volume / volume_median if volume_median > 0 else 1.0
         volume_quality = min(max((fvg_vol_ratio - 1.0) / 2.0, 0.0), 1.0)
 
@@ -131,8 +139,9 @@ class FVGQualityModule(BaseModule):
             "fvg_gap_quality_score": round(gap_quality, 4),
             "fvg_volume_quality_score": round(volume_quality, 4),
             "fvg_imbalance_quality_score": round(imbalance_quality, 4),
-            "fvg_creation_bar_index": bar_state.get("bar_index", 0),
-            "fvg_age_bars": 0,
+            "fvg_creation_bar_index": bar_state.get(
+                "fvg_creation_bar_index", bar_state.get("bar_index", 0)
+            ),
         }
 
     def _get_volume_median(self, history: List[Dict[str, Any]], period: int) -> float:
@@ -143,6 +152,47 @@ class FVGQualityModule(BaseModule):
         sorted_vols = sorted(volumes)
         mid = len(sorted_vols) // 2
         return sorted_vols[mid] if sorted_vols else 1.0
+
+    def _calculate_fill_and_age(self, bar_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Calculate FVG fill % and age penalties."""
+        fvg_top = bar_state.get("fvg_top", 0)
+        fvg_bottom = bar_state.get("fvg_bottom", 0)
+        fvg_type = bar_state.get("fvg_type", "bullish")
+        gap_size = bar_state.get("fvg_gap_size", fvg_top - fvg_bottom)
+        current_price = bar_state.get("close", 0)
+
+        current_bar = bar_state.get("bar_index", 0)
+        creation_bar = bar_state.get("fvg_creation_bar_index", current_bar)
+        age_bars = max(current_bar - creation_bar, 0)
+        age_penalty = min(age_bars / self.config["max_age_bars"], 1.0)
+
+        fill_percent = 0.0
+        if gap_size > 0 and current_price > 0 and fvg_top and fvg_bottom:
+            if fvg_type == "bullish":
+                if current_price >= fvg_top:
+                    fill_percent = 0.0
+                elif current_price <= fvg_bottom:
+                    fill_percent = 1.0
+                else:
+                    fill_percent = (fvg_top - current_price) / gap_size
+            else:
+                if current_price <= fvg_bottom:
+                    fill_percent = 0.0
+                elif current_price >= fvg_top:
+                    fill_percent = 1.0
+                else:
+                    fill_percent = (current_price - fvg_bottom) / gap_size
+
+        fill_percent = min(max(fill_percent, 0.0), 1.0)
+        fill_penalty = max(fill_percent - self.config["fill_penalty_start"], 0.0)
+        fill_penalty = min(fill_penalty / max(1 - self.config["fill_penalty_start"], 1e-6), 1.0)
+
+        return {
+            "fvg_age_bars": age_bars,
+            "fvg_fill_percent": round(fill_percent, 4),
+            "fvg_quality_penalty_age": round(age_penalty, 4),
+            "fvg_quality_penalty_fill": round(fill_penalty, 4),
+        }
 
     def _check_va_context(self, bar_state: Dict[str, Any]) -> Dict[str, Any]:
         """Check Value Area context."""
@@ -172,20 +222,27 @@ class FVGQualityModule(BaseModule):
         }
 
     def _determine_value_class(
-        self, strength_info: Dict[str, Any], va_info: Dict[str, Any]
+        self, strength_info: Dict[str, Any], va_info: Dict[str, Any], lifecycle_info: Dict[str, Any]
     ) -> str:
         """Determine FVG Value Class (A/B/C)."""
         strength_class = strength_info.get("fvg_strength_class", "Weak")
         strength_score = strength_info.get("fvg_strength_score", 0)
         breakout_va = va_info.get("fvg_breakout_va_flag", 0)
         after_sweep = va_info.get("fvg_after_sweep_flag", 0)
+        fill_pct = lifecycle_info.get("fvg_fill_percent", 0.0)
+        age_penalty = lifecycle_info.get("fvg_quality_penalty_age", 0.0)
 
         # A class: Strong FVG with good context
-        if strength_class == "Strong" and (breakout_va or after_sweep):
+        if (
+            strength_class == "Strong"
+            and (breakout_va or after_sweep)
+            and fill_pct < 0.6
+            and age_penalty < 0.6
+        ):
             return "A"
-        elif strength_class == "Strong":
+        elif strength_class == "Strong" and fill_pct < 0.8:
             return "A"
-        elif strength_class == "Medium" and (breakout_va or after_sweep):
+        elif strength_class == "Medium" and (breakout_va or after_sweep) and fill_pct < 0.8:
             return "B"
         elif strength_class == "Medium":
             return "B"
@@ -218,7 +275,7 @@ class FVGQualityModule(BaseModule):
         return "_".join(parts) if parts else "none"
 
     def _calculate_composite_score(
-        self, strength_info: Dict[str, Any], va_info: Dict[str, Any]
+        self, strength_info: Dict[str, Any], va_info: Dict[str, Any], lifecycle_info: Dict[str, Any]
     ) -> float:
         """Calculate composite quality score."""
         base_score = strength_info.get("fvg_strength_score", 0)
@@ -229,7 +286,13 @@ class FVGQualityModule(BaseModule):
         if va_info.get("fvg_after_sweep_flag"):
             base_score += 0.05
 
-        return min(base_score, 1.0)
+        # Penalties for fill/age decay
+        fill_penalty = lifecycle_info.get("fvg_quality_penalty_fill", 0.0)
+        age_penalty = lifecycle_info.get("fvg_quality_penalty_age", 0.0)
+
+        penalized = base_score * (1 - 0.4 * fill_penalty) * (1 - 0.3 * age_penalty)
+
+        return min(max(penalized, 0.0), 1.0)
 
     def _default_output(self) -> Dict[str, Any]:
         """Default output when no FVG detected."""
@@ -245,6 +308,9 @@ class FVGQualityModule(BaseModule):
             "fvg_imbalance_quality_score": 0.0,
             "fvg_creation_bar_index": 0,
             "fvg_age_bars": 0,
+            "fvg_fill_percent": 0.0,
+            "fvg_quality_penalty_age": 0.0,
+            "fvg_quality_penalty_fill": 0.0,
             "fvg_in_va_flag": 0,
             "fvg_breakout_va_flag": 0,
             "fvg_after_sweep_flag": 0,

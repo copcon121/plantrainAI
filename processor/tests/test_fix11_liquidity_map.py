@@ -28,6 +28,7 @@ class TestLiquidityMapModule:
 
         assert result["liquidity_sweep_detected"] is False
         assert result["liquidity_sweep_type"] == "none"
+        assert "eqh_price" in result and "eql_price" in result
 
     def test_equal_highs_detection(self):
         """Test equal highs liquidity level detection."""
@@ -43,6 +44,8 @@ class TestLiquidityMapModule:
             result = self.module.process_bar(bar)
 
         assert result["equal_highs_count"] >= 1
+        assert result["eqh_price"] == 100.50
+        assert result["eqh_touches"] >= 2
 
     def test_equal_lows_detection(self):
         """Test equal lows liquidity level detection."""
@@ -58,6 +61,8 @@ class TestLiquidityMapModule:
             result = self.module.process_bar(bar)
 
         assert result["equal_lows_count"] >= 1
+        assert result["eql_price"] == 99.50
+        assert result["eql_touches"] >= 2
 
     def test_sweep_above_detection(self):
         """Test sweep above liquidity level detection."""
@@ -185,6 +190,7 @@ class TestLiquidityMapModule:
         swept_count = sum(1 for l in self.module._liquidity_levels if l.get("swept", False))
         # The test is that the module handles sweeping properly
         assert "liquidity_sweep_detected" in result
+        assert result["bars_since_sweep"] >= 0
 
     def test_module_disabled_returns_input(self):
         """Test that disabled module returns input unchanged."""

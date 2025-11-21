@@ -36,7 +36,7 @@ class TargetPlacementModule(BaseModule):
 
         # Need FVG and stop to calculate targets
         if not bar_state.get("fvg_detected", False):
-            return {**bar_state, **self._default_output()}
+            return {**bar_state, **self._default_output(reason="no_fvg")}
 
         fvg_type = bar_state.get("fvg_type", "bullish")
         fvg_direction = 1 if fvg_type == "bullish" else -1
@@ -44,6 +44,11 @@ class TargetPlacementModule(BaseModule):
         entry_price = bar_state.get("close", 0)
         stop_price = bar_state.get("stop_price", 0)
         atr = bar_state.get("atr_14", 0.01)
+
+        if not entry_price or not stop_price or stop_price == entry_price:
+            return {**bar_state, **self._default_output(reason="missing_stop_or_entry")}
+        if atr is None or atr <= 0:
+            return {**bar_state, **self._default_output(reason="invalid_atr")}
 
         # Get target sources
         swing_high = bar_state.get("last_swing_high", bar_state.get("recent_swing_high"))
@@ -91,6 +96,7 @@ class TargetPlacementModule(BaseModule):
             "tp3_type": tp3_type,
             "tp3_rr": round(rr3, 2),
             "target_valid": tp1 is not None and rr1 >= self.config["min_rr"],
+            "target_reason": "ok" if tp1 else "no_target",
         }
 
     def _collect_targets(
@@ -190,7 +196,7 @@ class TargetPlacementModule(BaseModule):
         reward = abs(target - entry)
         return reward / risk
 
-    def _default_output(self) -> Dict[str, Any]:
+    def _default_output(self, reason: str = "no_fvg") -> Dict[str, Any]:
         """Default output when no targets."""
         return {
             "tp1_price": 0.0,
@@ -203,4 +209,5 @@ class TargetPlacementModule(BaseModule):
             "tp3_type": "none",
             "tp3_rr": 0.0,
             "target_valid": False,
+            "target_reason": reason,
         }

@@ -11,6 +11,7 @@ class TestOBQualityModule:
         self.module = OBQualityModule()
         self.base_bar = {
             "bar_index": 100,
+            "ob_bar_index": 99,
             "timestamp": "2024-01-15T10:45:00Z",
             "open": 100.00,
             "high": 100.50,
@@ -23,6 +24,20 @@ class TestOBQualityModule:
             "cumulative_delta": 15000,
             "atr_14": 0.25,
         }
+        self.history_bull_sweep = [
+            {"high": 100.60, "low": 99.95, "close": 100.20, "volume": 4200},
+            {"high": 100.55, "low": 99.90, "close": 100.10, "volume": 4300},
+            {"high": 100.50, "low": 99.85, "close": 100.05, "volume": 4100},
+            {"high": 100.45, "low": 99.80, "close": 100.00, "volume": 4000},
+            {"high": 100.40, "low": 99.78, "close": 99.95, "volume": 4050},
+        ]
+        self.history_bear_sweep = [
+            {"high": 100.10, "low": 99.60, "close": 99.80, "volume": 4200},
+            {"high": 100.20, "low": 99.55, "close": 99.75, "volume": 4300},
+            {"high": 100.25, "low": 99.50, "close": 99.70, "volume": 4000},
+            {"high": 100.30, "low": 99.45, "close": 99.65, "volume": 4100},
+            {"high": 100.35, "low": 99.40, "close": 99.60, "volume": 4050},
+        ]
 
     def test_no_ob_detected_returns_defaults(self):
         """Test that no OB detected returns default scores."""
@@ -44,7 +59,7 @@ class TestOBQualityModule:
             "ob_volume": 6000,
             "swing_after_price": 101.50,
         }
-        history = [{"volume": 4000} for _ in range(20)]
+        history = self.history_bull_sweep + [{"volume": 4000} for _ in range(15)]
 
         result = self.module.process_bar(bar, history)
 
@@ -64,7 +79,7 @@ class TestOBQualityModule:
             "swing_after_price": 101.50,
         }
 
-        result = self.module.process_bar(bar)
+        result = self.module.process_bar(bar, self.history_bull_sweep)
 
         # Displacement should be positive for bullish move
         assert result["ob_displacement_rr"] > 0
@@ -80,7 +95,7 @@ class TestOBQualityModule:
             "swing_after_price": 99.00,
         }
 
-        result = self.module.process_bar(bar)
+        result = self.module.process_bar(bar, self.history_bear_sweep)
 
         assert result["ob_displacement_rr"] > 0
 
@@ -94,7 +109,7 @@ class TestOBQualityModule:
             "ob_direction": "bull",
             "ob_volume": 10000,
         }
-        history = [{"volume": 4000} for _ in range(20)]
+        history = self.history_bull_sweep + [{"volume": 4000} for _ in range(15)]
 
         result = self.module.process_bar(bar, history)
 
@@ -112,7 +127,7 @@ class TestOBQualityModule:
             "sell_volume": 1000,
         }
 
-        result = self.module.process_bar(bar)
+        result = self.module.process_bar(bar, self.history_bull_sweep)
 
         # Strong buy imbalance should give high score
         assert result["ob_delta_imbalance"] > 0.5

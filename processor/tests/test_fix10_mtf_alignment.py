@@ -36,6 +36,7 @@ class TestMTFAlignmentModule:
         assert result["mtf_alignment_points"] == 3
         assert result["htf_trend"] == "bullish"
         assert result["mtf_is_aligned"] is True
+        assert result["mtf_data_complete"] is True
 
     def test_full_alignment_bearish(self):
         """Test full alignment for bearish setup."""
@@ -53,6 +54,7 @@ class TestMTFAlignmentModule:
         assert result["mtf_alignment_points"] == 3
         assert result["htf_trend"] == "bearish"
         assert result["mtf_is_aligned"] is True
+        assert result["htf_structure_direction"] == 0
 
     def test_partial_alignment(self):
         """Test partial alignment returns partial score."""
@@ -99,6 +101,7 @@ class TestMTFAlignmentModule:
 
         assert result["htf_trend"] == "neutral"
         assert result["mtf_alignment_score"] == 0.0
+        assert result["mtf_data_complete"] is False
 
     def test_trend_strength_calculation(self):
         """Test HTF trend strength calculation."""
@@ -129,6 +132,7 @@ class TestMTFAlignmentModule:
         assert result["htf_price_vs_ema20"] == 1  # Above
         assert result["htf_price_vs_ema50"] == 1  # Above
         assert result["htf_ema_trend"] == 1  # Bullish
+        assert "htf_structure_direction" in result
 
     def test_no_fvg_still_calculates(self):
         """Test module still calculates HTF trend without FVG."""
