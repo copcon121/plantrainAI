@@ -1,6 +1,11 @@
 """
-Fix #10: MTF Alignment - stub.
+Fix #10: MTF Alignment.
 Implement per docs/MODULE_FIX10_MTF_ALIGNMENT.md.
+
+Evaluates higher timeframe trend alignment:
+- HTF EMA alignment (price vs EMA20/50)
+- HTF structure alignment
+- Normalized alignment score (0-1)
 """
 from typing import Any, Dict, List
 
@@ -8,13 +13,118 @@ from processor.core.module_base import BaseModule
 
 
 class MTFAlignmentModule(BaseModule):
+    """Multi-Timeframe Alignment Module."""
+
     name = "fix10_mtf_alignment"
 
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
 
-    def process_bar(self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+    def process_bar(
+        self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
+    ) -> Dict[str, Any]:
+        """Process bar and evaluate MTF alignment."""
         if not self.enabled:
             return bar_state
-        # TODO: evaluate higher timeframe alignment vs FVG direction
-        return bar_state
+
+        # Get HTF data (expected from Ninja export)
+        htf_close = bar_state.get("htf_close", bar_state.get("close", 0))
+        htf_ema_20 = bar_state.get("htf_ema_20", 0)
+        htf_ema_50 = bar_state.get("htf_ema_50", 0)
+        htf_high = bar_state.get("htf_high", bar_state.get("high", 0))
+        htf_low = bar_state.get("htf_low", bar_state.get("low", 0))
+
+        # Current timeframe data
+        fvg_type = bar_state.get("fvg_type", "")
+        fvg_direction = 1 if fvg_type == "bullish" else -1 if fvg_type == "bearish" else 0
+
+        # Calculate alignment components
+        ema_alignment = self._check_ema_alignment(htf_close, htf_ema_20, htf_ema_50)
+        structure_alignment = self._check_structure_alignment(bar_state)
+
+        # Calculate overall alignment score (0-3 points -> normalized to 0-1)
+        total_points = 0
+
+        # Point 1: Price above/below EMA20
+        if ema_alignment["price_vs_ema20"] == fvg_direction:
+            total_points += 1
+
+        # Point 2: Price above/below EMA50
+        if ema_alignment["price_vs_ema50"] == fvg_direction:
+            total_points += 1
+
+        # Point 3: EMA20 above/below EMA50 (trend)
+        if ema_alignment["ema_trend"] == fvg_direction:
+            total_points += 1
+
+        # Normalize to 0-1
+        alignment_score = total_points / 3.0
+
+        # Determine trend
+        if ema_alignment["ema_trend"] == 1:
+            htf_trend = "bullish"
+        elif ema_alignment["ema_trend"] == -1:
+            htf_trend = "bearish"
+        else:
+            htf_trend = "neutral"
+
+        # Check if FVG aligns with HTF trend
+        is_aligned = fvg_direction == ema_alignment["ema_trend"] if fvg_direction != 0 else False
+
+        return {
+            **bar_state,
+            "mtf_alignment_score": round(alignment_score, 3),
+            "mtf_alignment_points": total_points,
+            "htf_trend": htf_trend,
+            "htf_trend_strength": round(abs(ema_alignment["trend_strength"]), 3),
+            "htf_price_vs_ema20": ema_alignment["price_vs_ema20"],
+            "htf_price_vs_ema50": ema_alignment["price_vs_ema50"],
+            "htf_ema_trend": ema_alignment["ema_trend"],
+            "mtf_is_aligned": is_aligned,
+        }
+
+    def _check_ema_alignment(
+        self, price: float, ema_20: float, ema_50: float
+    ) -> Dict[str, Any]:
+        """Check price and EMA alignment."""
+        if ema_20 == 0 or ema_50 == 0:
+            return {
+                "price_vs_ema20": 0,
+                "price_vs_ema50": 0,
+                "ema_trend": 0,
+                "trend_strength": 0.0,
+            }
+
+        # Price vs EMAs
+        price_vs_ema20 = 1 if price > ema_20 else -1 if price < ema_20 else 0
+        price_vs_ema50 = 1 if price > ema_50 else -1 if price < ema_50 else 0
+
+        # EMA trend (EMA20 vs EMA50)
+        ema_trend = 1 if ema_20 > ema_50 else -1 if ema_20 < ema_50 else 0
+
+        # Trend strength (distance between EMAs as % of price)
+        ema_diff = abs(ema_20 - ema_50)
+        trend_strength = ema_diff / price if price > 0 else 0
+
+        return {
+            "price_vs_ema20": price_vs_ema20,
+            "price_vs_ema50": price_vs_ema50,
+            "ema_trend": ema_trend,
+            "trend_strength": trend_strength,
+        }
+
+    def _check_structure_alignment(self, bar_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Check HTF structure alignment."""
+        htf_is_swing_high = bar_state.get("htf_is_swing_high", False)
+        htf_is_swing_low = bar_state.get("htf_is_swing_low", False)
+
+        # Could be expanded with HTF CHoCH/BOS detection
+        structure_bullish = htf_is_swing_low
+        structure_bearish = htf_is_swing_high
+
+        if structure_bullish:
+            return {"direction": 1, "type": "swing_low"}
+        elif structure_bearish:
+            return {"direction": -1, "type": "swing_high"}
+        else:
+            return {"direction": 0, "type": "none"}
