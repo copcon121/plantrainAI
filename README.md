@@ -124,7 +124,8 @@ SMC_indicator/
 ### Additional Documentation
 | Document | Purpose |
 |----------|---------|
-| [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) | Complete list of 55 fields required from NinjaTrader |
+| [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) | Complete list of **~102 fields** required from NinjaTrader (v1.1) |
+| [MODULE_DEPENDENCIES_MATRIX.md](docs/MODULE_DEPENDENCIES_MATRIX.md) | Cross-reference: which fields each module needs |
 | [PHASE1_INDICATOR_EXPORT_SPEC.md](PHASE1_INDICATOR_EXPORT_SPEC.md) | Phase 1 export specification |
 | [WORKFLOW_VISUALIZATION.md](WORKFLOW_VISUALIZATION.md) | Visual flow diagrams |
 
@@ -380,7 +381,8 @@ processor.set_module_params('fix01_ob_quality', {
 - [MODULE_FIX09_VOLUME_PROFILE.md](docs/MODULE_FIX09_VOLUME_PROFILE.md) ✅
 - [MODULE_FIX10_MTF_ALIGNMENT.md](docs/MODULE_FIX10_MTF_ALIGNMENT.md) ✅ v1.0
 - [MODULE_FIX11_LIQUIDITY_MAP.md](docs/MODULE_FIX11_LIQUIDITY_MAP.md) ✅
-- [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) ✅ (55 fields)
+- [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) ✅ (~102 fields v1.1)
+- [MODULE_DEPENDENCIES_MATRIX.md](docs/MODULE_DEPENDENCIES_MATRIX.md) ✅ (Field-to-Module mapping)
 
 ### API Docs
 ```bash
@@ -491,10 +493,11 @@ Proprietary - SMC Trading System
 **Current Focus:** Implement NinjaTrader Indicator (Layer 1)
 
 **All Specs Complete! Next Steps:**
-1. Review [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) - 55 fields to export
-2. Implement NinjaTrader C# indicator (Layer 1)
-3. Implement Python processor modules (Layer 2)
-4. ML Pipeline integration
+1. Review [NINJA_EXPORT_CHECKLIST.md](docs/NINJA_EXPORT_CHECKLIST.md) - ~102 fields to export (v1.1)
+2. Review [MODULE_DEPENDENCIES_MATRIX.md](docs/MODULE_DEPENDENCIES_MATRIX.md) - Which fields each module needs
+3. Implement NinjaTrader C# indicator (Layer 1)
+4. Implement Python processor modules (Layer 2)
+5. ML Pipeline integration
 
 **Remember:** Mỗi module độc lập, có thể test riêng, backtest riêng. Quality over speed!
 

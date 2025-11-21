@@ -1,8 +1,80 @@
 # NINJA EXPORT CHECKLIST
 
-## VERSION: 1.0
+## VERSION: 1.1
 ## PURPOSE: Comprehensive list of all fields required from NinjaTrader for all modules
-## LAST UPDATED: 2024
+## LAST UPDATED: November 21, 2025
+
+---
+
+## 0. CRITICAL META FIELDS (MUST HAVE FIRST)
+
+### 0.1 Instrument Metadata (Per File Header or Per Bar)
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `schema_version` | string | Export format version (e.g., "1.1") | **MUST** |
+| `symbol` | string | Instrument symbol (e.g., "ES", "NQ", "MES") | **MUST** |
+| `expiry` | string | Contract expiry (e.g., "202412", "202503") | **MUST** |
+| `timezone` | string | Data timezone (e.g., "America/New_York", "UTC") | **MUST** |
+| `tick_size` | float | Minimum price increment (e.g., 0.25 for ES) | **MUST** |
+| `point_value` | float | Dollar value per point (e.g., 50 for ES) | **MUST** |
+| `exchange` | string | Exchange name (e.g., "CME", "COMEX") | Recommended |
+
+```csharp
+// NinjaScript Example - Write header line first
+string headerJson = $@"{{
+    ""schema_version"": ""1.1"",
+    ""symbol"": ""{Instrument.MasterInstrument.Name}"",
+    ""expiry"": ""{Instrument.Expiry:yyyyMM}"",
+    ""timezone"": ""{Core.Globals.GeneralOptions.TimeZoneInfo.Id}"",
+    ""tick_size"": {Instrument.MasterInstrument.TickSize},
+    ""point_value"": {Instrument.MasterInstrument.PointValue},
+    ""exchange"": ""{Instrument.Exchange}""
+}}";
+// Write header as first line
+```
+
+### 0.2 Session & Time Context (Per Bar)
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `session_type` | string | "RTH" / "ETH" / "GLOBEX" | Session filtering |
+| `session_name` | string | "Asian" / "London" / "NY_AM" / "NY_PM" | Module #07, #09 |
+| `session_date` | string | Trading date YYYY-MM-DD | Session grouping |
+| `session_bar_index` | int | Bar index within session (resets each day) | Module #09 VP |
+| `is_session_open` | bool | Is this bar the session open? | Session analysis |
+| `is_session_close` | bool | Is this bar the session close? | Session analysis |
+| `minutes_into_session` | int | Minutes since session open | Time-based filters |
+
+```csharp
+// NinjaScript Example
+jsonBuilder.Append($"\"session_type\": \"{(Bars.IsFirstBarOfSession ? "RTH" : GetSessionType())}\", ");
+jsonBuilder.Append($"\"session_name\": \"{GetCurrentSessionName()}\", ");
+jsonBuilder.Append($"\"session_date\": \"{Time[0]:yyyy-MM-dd}\", ");
+jsonBuilder.Append($"\"session_bar_index\": {sessionBarIndex}, ");
+jsonBuilder.Append($"\"is_session_open\": {Bars.IsFirstBarOfSession.ToString().ToLower()}, ");
+```
+
+### 0.3 Previous Session Reference (Per Bar)
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `prev_session_high` | float | Previous session high | Module #06, #11 |
+| `prev_session_low` | float | Previous session low | Module #06, #11 |
+| `prev_session_close` | float | Previous session close | Gap analysis |
+| `prev_session_vah` | float | Previous session VAH | Module #09 |
+| `prev_session_val` | float | Previous session VAL | Module #09 |
+| `prev_session_poc` | float | Previous session POC | Module #09 |
+
+### 0.4 Data Quality Flags (Per Bar)
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `is_valid_bar` | bool | Is bar data complete/valid? | Data quality |
+| `has_volume_data` | bool | Is volume data available? | Delta validation |
+| `bid_ask_available` | bool | Is bid/ask data available? | Spread checks |
+| `ask_price` | float | Current ask (optional for spread) | Spread analysis |
+| `bid_price` | float | Current bid (optional for spread) | Spread analysis |
 
 ---
 
@@ -47,17 +119,32 @@ This document contains the **complete list of fields** that the NinjaTrader indi
 
 ### 2.1 Summary by Category
 
-| Category | Field Count | Source |
-|----------|-------------|--------|
-| Basic Bar Data | 8 | NinjaScript |
-| Volume & Delta | 6 | Volume Delta indicators |
-| SMC Events (OB) | 8 | Custom OB detection |
-| SMC Events (FVG) | 12 | Custom FVG detection |
-| SMC Events (CHoCH/BOS) | 4 | Custom CHoCH detection |
-| Swing Structure | 6 | Swing indicator |
-| Market Context | 4 | ATR, ADX |
-| HTF Data | 7 | Multi-series |
-| **TOTAL** | **55** | |
+| Category | Field Count | Source | Priority |
+|----------|-------------|--------|----------|
+| **Meta & Instrument** | 7 | NinjaScript | **MUST** |
+| **Session & Time** | 7 | Session management | **MUST** |
+| **Previous Session** | 6 | Session tracking | HIGH |
+| **Data Quality** | 5 | Validation | HIGH |
+| Basic Bar Data | 8 | NinjaScript | **MUST** |
+| Volume & Delta | 6 | Volume Delta indicators | **MUST** |
+| SMC Events (OB) | 8 | Custom OB detection | **MUST** |
+| SMC Events (FVG) | 12 | Custom FVG detection | **MUST** |
+| SMC Events (CHoCH/BOS) | 16 | Custom CHoCH detection | **MUST** |
+| Swing Structure | 6 | Swing indicator | **MUST** |
+| **EQH/EQL Detection** | 6 | Liquidity detection | HIGH |
+| **Volume Profile** | 8 | VP indicator | MEDIUM |
+| Market Context | 4 | ATR, ADX | **MUST** |
+| HTF Data | 7 | Multi-series | HIGH |
+| Liquidity Map | 6 | Liquidity tracking | HIGH |
+| **TOTAL** | **~102** | | |
+
+### 2.2 Priority Legend
+
+| Priority | Meaning |
+|----------|---------|
+| **MUST** | Required for basic pipeline to function |
+| HIGH | Important for full module functionality |
+| MEDIUM | Enhanced features, can calculate in Python if needed |
 
 ---
 
@@ -191,7 +278,9 @@ if (fvgDetected)
 
 ---
 
-### 3.5 SMC Events - CHoCH/BOS (4 fields)
+### 3.5 SMC Events - CHoCH/BOS (12 fields) - EXPANDED for Module #03
+
+**Core Detection (4 fields):**
 
 | Field | Type | Description | Required For |
 |-------|------|-------------|--------------|
@@ -200,12 +289,54 @@ if (fvgDetected)
 | `bos_detected` | bool | Was BOS detected? | Module #03 |
 | `bos_type` | string | "bullish" / "bearish" / null | Module #03 |
 
+**CHoCH Details (4 fields) - NEW for Structure Context:**
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `choch_price` | float | Price level where CHoCH occurred | Module #03 |
+| `choch_bar_index` | int | Bar index of CHoCH | Module #03 |
+| `choch_bars_ago` | int | Bars since CHoCH (age) | Module #03 |
+| `choch_swing_broken` | float | Price of swing that was broken | Module #03 |
+
+**BOS Details (4 fields) - NEW for Structure Context:**
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `bos_price` | float | Price level where BOS occurred | Module #03 |
+| `bos_bar_index` | int | Bar index of BOS | Module #03 |
+| `bos_bars_ago` | int | Bars since BOS (age) | Module #03 |
+| `bos_swing_broken` | float | Price of swing that was broken | Module #03 |
+
+**Trend State (4 fields) - NEW for Structure Context:**
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `current_trend` | string | "bullish" / "bearish" / "neutral" | Module #03, #07 |
+| `trend_swing_count` | int | Number of swings in current trend | Module #03 |
+| `last_structure_break` | string | "choch" / "bos" / "none" | Module #03 |
+| `bars_since_structure_break` | int | Bars since last CHoCH or BOS | Module #03 |
+
 ```csharp
-// NinjaScript Example
+// NinjaScript Example - Expanded CHoCH/BOS
 jsonBuilder.Append($"\"choch_detected\": {chochDetected.ToString().ToLower()}, ");
 jsonBuilder.Append($"\"choch_type\": {(chochDetected ? $"\"{chochType}\"" : "null")}, ");
+jsonBuilder.Append($"\"choch_price\": {(chochDetected ? chochPrice.ToString() : "null")}, ");
+jsonBuilder.Append($"\"choch_bar_index\": {(chochDetected ? chochBarIndex.ToString() : "null")}, ");
+jsonBuilder.Append($"\"choch_bars_ago\": {chochBarsAgo}, ");
+jsonBuilder.Append($"\"choch_swing_broken\": {(chochDetected ? chochSwingBroken.ToString() : "null")}, ");
+
 jsonBuilder.Append($"\"bos_detected\": {bosDetected.ToString().ToLower()}, ");
 jsonBuilder.Append($"\"bos_type\": {(bosDetected ? $"\"{bosType}\"" : "null")}, ");
+jsonBuilder.Append($"\"bos_price\": {(bosDetected ? bosPrice.ToString() : "null")}, ");
+jsonBuilder.Append($"\"bos_bar_index\": {(bosDetected ? bosBarIndex.ToString() : "null")}, ");
+jsonBuilder.Append($"\"bos_bars_ago\": {bosBarsAgo}, ");
+jsonBuilder.Append($"\"bos_swing_broken\": {(bosDetected ? bosSwingBroken.ToString() : "null")}, ");
+
+// Trend state
+jsonBuilder.Append($"\"current_trend\": \"{currentTrend}\", ");
+jsonBuilder.Append($"\"trend_swing_count\": {trendSwingCount}, ");
+jsonBuilder.Append($"\"last_structure_break\": \"{lastStructureBreak}\", ");
+jsonBuilder.Append($"\"bars_since_structure_break\": {barsSinceStructureBreak}, ");
 ```
 
 ---
@@ -299,6 +430,47 @@ if (BarsInProgress == 0)  // Primary series (5m)
 
 ---
 
+### 3.10 EQH/EQL Detection (6 fields) - Module #11
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `eqh_detected` | bool | Equal Highs detected at this bar? | Module #11 |
+| `eqh_price` | float | Price level of equal highs | Module #11 |
+| `eqh_count` | int | Number of touches at this level | Module #11 |
+| `eql_detected` | bool | Equal Lows detected at this bar? | Module #11 |
+| `eql_price` | float | Price level of equal lows | Module #11 |
+| `eql_count` | int | Number of touches at this level | Module #11 |
+
+```csharp
+// NinjaScript Example - EQH/EQL Detection
+// Equal Highs: Multiple swing highs within tolerance (e.g., 2 ticks)
+jsonBuilder.Append($"\"eqh_detected\": {eqhDetected.ToString().ToLower()}, ");
+jsonBuilder.Append($"\"eqh_price\": {(eqhDetected ? eqhPrice : "null")}, ");
+jsonBuilder.Append($"\"eqh_count\": {eqhCount}, ");
+jsonBuilder.Append($"\"eql_detected\": {eqlDetected.ToString().ToLower()}, ");
+jsonBuilder.Append($"\"eql_price\": {(eqlDetected ? eqlPrice : "null")}, ");
+jsonBuilder.Append($"\"eql_count\": {eqlCount}, ");
+```
+
+---
+
+### 3.11 Volume Profile Session Data (8 fields) - Module #09
+
+| Field | Type | Description | Required For |
+|-------|------|-------------|--------------|
+| `vp_session_poc` | float | Current session POC | Module #09 |
+| `vp_session_vah` | float | Current session VAH | Module #09, #11 |
+| `vp_session_val` | float | Current session VAL | Module #09, #11 |
+| `vp_session_volume` | int | Total session volume so far | Module #09 |
+| `vp_value_area_pct` | float | % of volume in VA (typically 70%) | Module #09 |
+| `vp_developing_poc` | float | Developing POC (updates each bar) | Module #09 |
+| `vp_high_volume_nodes` | string | JSON array of HVN prices | Module #09 |
+| `vp_low_volume_nodes` | string | JSON array of LVN prices | Module #09 |
+
+**Note:** Volume Profile can be calculated in Python from tick data, but if NinjaTrader has built-in VP indicator, exporting these fields saves computation.
+
+---
+
 ## 4. FIELD PRIORITY
 
 ### 4.1 MUST HAVE (Phase 1)
@@ -308,48 +480,67 @@ These fields are required for core functionality:
 ```json
 // Minimum Viable Export
 {
-    // Bar basics
+    // === META (CRITICAL) ===
+    "schema_version": "1.1",
+    "symbol": "ES",
+    "expiry": "202503",
+    "timezone": "America/New_York",
+    "tick_size": 0.25,
+    "point_value": 50.0,
+
+    // === SESSION (CRITICAL) ===
+    "session_type": "RTH",
+    "session_name": "NY_AM",
+    "session_date": "2024-01-15",
+    "session_bar_index": 45,
+
+    // === BAR BASICS ===
     "bar_index": 1000,
-    "timestamp": "2024-01-15T09:30:00",
-    "open": 100.00,
-    "high": 100.50,
-    "low": 99.80,
-    "close": 100.30,
+    "timestamp": "2024-01-15T09:30:00-05:00",
+    "open": 5000.00,
+    "high": 5002.50,
+    "low": 4998.00,
+    "close": 5001.25,
     "volume": 5000,
 
-    // Volume delta
+    // === VOLUME DELTA ===
     "buy_volume": 3000,
     "sell_volume": 2000,
     "delta": 1000,
     "cumulative_delta": 15000,
 
-    // FVG (PRIMARY SIGNAL)
+    // === FVG (PRIMARY SIGNAL) ===
     "fvg_detected": true,
     "fvg_type": "bullish",
-    "fvg_top": 100.40,
-    "fvg_bottom": 100.10,
+    "fvg_top": 5001.00,
+    "fvg_bottom": 4999.50,
     "fvg_bar_index": 998,
-    "fvg_gap_size": 0.30,
+    "fvg_gap_size": 1.50,
     "fvg_creation_volume": 4500,
     "fvg_creation_delta": 900,
 
-    // OB (context)
+    // === OB (CONTEXT) ===
     "ob_detected": false,
-    "nearest_ob_top": 100.80,
-    "nearest_ob_bottom": 100.50,
+    "nearest_ob_top": 5005.00,
+    "nearest_ob_bottom": 5003.50,
 
-    // Structure
+    // === STRUCTURE ===
     "is_swing_high": false,
     "is_swing_low": false,
-    "last_swing_high": 100.60,
-    "last_swing_low": 99.50,
+    "last_swing_high": 5010.00,
+    "last_swing_low": 4990.00,
 
-    // CHoCH (context)
+    // === CHOCH (CONTEXT) ===
     "choch_detected": false,
     "bos_detected": false,
 
-    // ATR
-    "atr_14": 0.25
+    // === ATR ===
+    "atr_14": 12.50,
+
+    // === PREVIOUS SESSION ===
+    "prev_session_high": 5015.00,
+    "prev_session_low": 4985.00,
+    "prev_session_close": 5000.00
 }
 ```
 
@@ -577,7 +768,8 @@ Additional fields for enhanced analysis:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2024-XX-XX | Initial checklist with all 55 fields |
+| 1.0 | 2024-XX-XX | Initial checklist with 55 fields |
+| 1.1 | 2024-11-21 | Added: Meta/Instrument (7), Session/Time (7), Prev Session (6), Data Quality (5), EQH/EQL (6), VP (8), Expanded CHoCH/BOS (16). Total: ~102 fields |
 
 ---
 
@@ -587,13 +779,135 @@ Additional fields for enhanced analysis:
 - Write JSONL incrementally (don't buffer entire session)
 - Use StringBuilder for JSON construction
 - Flush file periodically to avoid data loss
+- Consider separate files per session for large datasets
 
 ### 9.2 Data Quality
 - Always validate field values before export
 - Use null for missing optional fields (not 0 or empty string)
-- Ensure consistent precision for floats (5 decimal places)
+- Ensure consistent precision for floats (5 decimal places for price, 3 for ratios)
+- Validate: `buy_volume + sell_volume ≈ volume` (within 5% tolerance)
+- Validate: `delta = buy_volume - sell_volume`
 
-### 9.3 Future Extensions
-- Add Volume Profile fields (Module #09)
-- Add session markers (Asian/London/NY)
-- Add news event flags
+### 9.3 Schema Versioning
+- Always include `schema_version` in header
+- Update version when adding/removing fields
+- Python loader should check schema version compatibility
+
+---
+
+## 10. IMPLEMENTATION NOTES
+
+### 10.1 Module #01 OB Quality - Special Considerations
+
+> **OB là context, không phải signal riêng.**
+
+OB Quality cần:
+- `ob_displacement_rr`: Calculated from leg move / OB size
+- `ob_volume_factor`: ob_volume / median_volume_20
+- `ob_delta_imbalance`: |delta| / volume on OB bar
+- `ob_sweep_before`: Was there a liquidity sweep before OB formed?
+
+**Validation before use:**
+1. Sync OB detection với FVG event builder
+2. Labeling/correlation check: Does OB quality correlate with FVG win rate?
+3. Only use as FVG context feature after validation passes
+
+### 10.2 Module #03 Structure Context - Dependencies
+
+Cần CHoCH/BOS details đầy đủ:
+- `choch_price`, `choch_bars_ago` → For expansion detection
+- `bos_price`, `bos_bars_ago` → For continuation detection
+- `current_trend`, `trend_swing_count` → For context tagging
+
+**Context Types:**
+- **Expansion**: After CHoCH, new trend starting
+- **Retracement**: Pullback in existing trend (after BOS)
+- **Continuation**: Mid-trend, no recent structure break
+
+### 10.3 Module #11 Liquidity Map - EQH/EQL Detection
+
+**Equal Highs/Lows Definition:**
+- Multiple swing points within tolerance (e.g., 2 ticks for ES)
+- Minimum 2 touches to qualify as EQH/EQL
+- Track untested vs tested status
+
+**Fields needed:**
+- `eqh_price`, `eql_price` → Liquidity levels
+- `eqh_count`, `eql_count` → Number of touches (more = stronger liquidity)
+- `prev_session_vah`, `prev_session_val` → Session-based liquidity
+
+### 10.4 RTH vs ETH Handling
+
+**RTH (Regular Trading Hours):**
+- Primary session for analysis
+- Higher volume, more reliable signals
+- Session markers: NY_AM, NY_PM
+
+**ETH (Extended Trading Hours):**
+- Globex overnight session
+- Lower volume, wider spreads
+- Use for overnight gap analysis only
+
+**Recommendation:** Filter most signals to RTH only, use ETH data for context.
+
+### 10.5 Spread/Bid-Ask Sanity Checks
+
+Before exporting:
+```csharp
+// Validate spread is reasonable
+double spread = Ask[0] - Bid[0];
+bool validSpread = spread > 0 && spread < 10 * TickSize;
+
+// Validate bid/ask vs OHLC
+bool bidAskValid = Bid[0] <= Close[0] && Ask[0] >= Close[0];
+
+jsonBuilder.Append($"\"is_valid_bar\": {(validSpread && bidAskValid).ToString().ToLower()}, ");
+```
+
+---
+
+## 11. PYTHON LOADER REQUIREMENTS
+
+### 11.1 Schema Validation
+
+```python
+REQUIRED_FIELDS = [
+    "schema_version", "symbol", "expiry", "timezone", "tick_size",
+    "bar_index", "timestamp", "open", "high", "low", "close", "volume",
+    "buy_volume", "sell_volume", "delta",
+    "fvg_detected", "fvg_type", "fvg_top", "fvg_bottom",
+    "atr_14"
+]
+
+def validate_bar(bar: dict) -> bool:
+    """Validate bar has all required fields."""
+    for field in REQUIRED_FIELDS:
+        if field not in bar:
+            return False
+    return True
+```
+
+### 11.2 Data Integrity Checks
+
+```python
+def validate_data_integrity(bar: dict) -> list:
+    """Check data integrity, return list of warnings."""
+    warnings = []
+
+    # Delta consistency
+    expected_delta = bar.get("buy_volume", 0) - bar.get("sell_volume", 0)
+    if abs(bar.get("delta", 0) - expected_delta) > 1:
+        warnings.append("delta_mismatch")
+
+    # OHLC consistency
+    if bar["high"] < max(bar["open"], bar["close"]):
+        warnings.append("high_invalid")
+    if bar["low"] > min(bar["open"], bar["close"]):
+        warnings.append("low_invalid")
+
+    # Volume sanity
+    if bar["volume"] <= 0:
+        warnings.append("zero_volume")
+
+    return warnings
+```
