@@ -17,12 +17,27 @@ MODULE_NAMES = [
     "fix11_liquidity_map",
 ]
 
+# Mapping from module file names to actual class names
+CLASS_NAME_MAP = {
+    "fix01_ob_quality": "OBQualityModule",
+    "fix02_fvg_quality": "FVGQualityModule",
+    "fix03_structure_context": "StructureContextModule",
+    "fix04_confluence": "ConfluenceModule",
+    "fix05_stop_placement": "StopPlacementModule",
+    "fix06_target_placement": "TargetPlacementModule",
+    "fix07_market_condition": "MarketConditionModule",
+    "fix08_volume_divergence": "VolumeDivergenceModule",
+    "fix09_volume_profile": "VolumeProfileModule",
+    "fix10_mtf_alignment": "MTFAlignmentModule",
+    "fix11_liquidity_map": "LiquidityMapModule",
+}
+
 
 @pytest.mark.parametrize("module_name", MODULE_NAMES)
 def test_module_process_bar_smoke(module_name):
     module = importlib.import_module(f"processor.modules.{module_name}")
-    class_name = "".join(part.capitalize() for part in module_name.split("_"))
-    cls = getattr(module, f"{class_name}Module")
+    class_name = CLASS_NAME_MAP[module_name]
+    cls = getattr(module, class_name)
     instance = cls()
 
     # Pick module-specific fixture if available, else BASE_BAR
