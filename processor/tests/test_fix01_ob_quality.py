@@ -59,7 +59,11 @@ class TestOBQualityModule:
             "ob_volume": 6000,
             "swing_after_price": 101.50,
         }
-        history = self.history_bull_sweep + [{"volume": 4000} for _ in range(15)]
+        # History bars need high/low/close for sweep detection
+        history = self.history_bull_sweep + [
+            {"high": 100.50, "low": 99.70, "close": 100.10, "volume": 4000}
+            for _ in range(15)
+        ]
 
         result = self.module.process_bar(bar, history)
 
@@ -108,8 +112,13 @@ class TestOBQualityModule:
             "ob_low": 100.00,
             "ob_direction": "bull",
             "ob_volume": 10000,
+            "swing_after_price": 101.50,
         }
-        history = self.history_bull_sweep + [{"volume": 4000} for _ in range(15)]
+        # History bars need high/low/close for sweep detection
+        history = self.history_bull_sweep + [
+            {"high": 100.50, "low": 99.70, "close": 100.10, "volume": 4000}
+            for _ in range(15)
+        ]
 
         result = self.module.process_bar(bar, history)
 
