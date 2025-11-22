@@ -39,19 +39,19 @@ namespace NinjaTrader.NinjaScript.Indicators
 {
 	public class Volumdelta : Indicator
 	{
-		private double		buys 	= 1;
-		private double 		sells 	= 1;
-		private double		buyscum 	= 1;
-		private double 		sellscum 	= 1;
+		private double		buys 	= 0;
+		private double 		sells 	= 0;
+		private double		buyscum 	= 0;
+		private double 		sellscum 	= 0;
 		
-		private double		cdHigh 	= 1;
-		private double 		cdLow 	= 1;
-		private double		cdOpen 	= 1;
-		private double 		cdClose	= 1;
-		private double		cdHighcum 	= 1;
-		private double 		cdLowcum 	= 1;
-		private double		cdOpencum 	= 1;
-		private double 		cdClosecum	= 1;
+		private double		cdHigh 	= 0;
+		private double 		cdLow 	= 0;
+		private double		cdOpen 	= 0;
+		private double 		cdClose	= 0;
+		private double		cdHighcum 	= 0;
+		private double 		cdLowcum 	= 0;
+		private double		cdOpencum 	= 0;
+		private double 		cdClosecum	= 0;
 		
 		private int										barPaintWidth;
 		private Dictionary<string, DXMediaMap>			dxmBrushes;

@@ -2109,7 +2109,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             double barDeltaPct = 0.0;
             if (lastOpen != 0)
-                barDeltaPct = (lastClose - lastOpen) / (lastOpen * 100.0);
+                barDeltaPct = ((lastClose - lastOpen) / lastOpen) * 100.0;
 
             _cumAbsDeltaPct += Math.Abs(barDeltaPct);
             _cumCount = _cumCount + 1;

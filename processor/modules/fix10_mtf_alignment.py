@@ -42,6 +42,23 @@ class MTFAlignmentModule(BaseModule):
         ema_alignment = self._check_ema_alignment(htf_close, htf_ema_20, htf_ema_50)
         structure_alignment = self._check_structure_alignment(bar_state)
 
+        # If HTF data missing, return neutral defaults and flag incomplete
+        if not ema_alignment.get("data_complete", False):
+            return {
+                **bar_state,
+                "mtf_alignment_score": 0.0,
+                "mtf_alignment_points": 0,
+                "htf_trend": "neutral",
+                "htf_trend_strength": 0.0,
+                "htf_price_vs_ema20": 0,
+                "htf_price_vs_ema50": 0,
+                "htf_ema_trend": 0,
+                "htf_structure_direction": structure_alignment["direction"],
+                "htf_structure_source": structure_alignment["type"],
+                "mtf_is_aligned": False,
+                "mtf_data_complete": False,
+            }
+
         # Calculate overall alignment score (0-3/4 points -> normalized to 0-1)
         total_points = 0
         total_factors = 3 + (1 if structure_alignment["direction"] != 0 else 0)
@@ -129,15 +146,20 @@ class MTFAlignmentModule(BaseModule):
         htf_is_swing_high = bar_state.get("htf_is_swing_high", False)
         htf_is_swing_low = bar_state.get("htf_is_swing_low", False)
 
-        # HTF BOS/CHoCH if provided
+        # HTF BOS/CHoCH if provided (only count recent)
         bos_type = bar_state.get("htf_bos_type")
         choch_type = bar_state.get("htf_choch_type")
-        bos_bars_ago = bar_state.get("htf_bos_bars_ago", 0)
-        choch_bars_ago = bar_state.get("htf_choch_bars_ago", 0)
+        bos_bars_ago = bar_state.get("htf_bos_bars_ago", 999)
+        choch_bars_ago = bar_state.get("htf_choch_bars_ago", 999)
+        max_structure_age = 20
 
-        if bos_type == "bullish" or choch_type == "bullish":
+        if (bos_type == "bullish" and bos_bars_ago <= max_structure_age) or (
+            choch_type == "bullish" and choch_bars_ago <= max_structure_age
+        ):
             return {"direction": 1, "type": "bos_bull" if bos_type == "bullish" else "choch_bull"}
-        if bos_type == "bearish" or choch_type == "bearish":
+        if (bos_type == "bearish" and bos_bars_ago <= max_structure_age) or (
+            choch_type == "bearish" and choch_bars_ago <= max_structure_age
+        ):
             return {"direction": -1, "type": "bos_bear" if bos_type == "bearish" else "choch_bear"}
 
         if htf_is_swing_low:

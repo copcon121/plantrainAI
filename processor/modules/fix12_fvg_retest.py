@@ -169,8 +169,14 @@ class FVGRetestModule(BaseModule):
 
     def _has_reversal_context(self, fvg_type: str, bar_state: Dict[str, Any]) -> bool:
         is_bull = fvg_type == "bullish"
-        sweep_up = bar_state.get("sweep_prev_high") or bar_state.get("liquidity_sweep_detected") and bar_state.get("liquidity_sweep_type", "").startswith("sweep_above")
-        sweep_down = bar_state.get("sweep_prev_low") or bar_state.get("liquidity_sweep_detected") and bar_state.get("liquidity_sweep_type", "").startswith("sweep_below")
+        sweep_up = bar_state.get("sweep_prev_high") or (
+            bar_state.get("liquidity_sweep_detected")
+            and bar_state.get("liquidity_sweep_type", "").startswith("sweep_above")
+        )
+        sweep_down = bar_state.get("sweep_prev_low") or (
+            bar_state.get("liquidity_sweep_detected")
+            and bar_state.get("liquidity_sweep_type", "").startswith("sweep_below")
+        )
 
         bos_up = bar_state.get("ext_bos_up") or bar_state.get("int_bos_up")
         bos_down = bar_state.get("ext_bos_down") or bar_state.get("int_bos_down")

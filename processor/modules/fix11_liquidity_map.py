@@ -20,7 +20,7 @@ class LiquidityMapModule(BaseModule):
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
         self.config = {
-            "equal_level_tolerance": 0.0002,  # Tolerance for equal highs/lows (0.02%)
+            "equal_level_tolerance": 0.0002,  # Default tolerance ratio if tick_size not provided
             "min_touches": 2,  # Minimum touches to form liquidity level
             "lookback_bars": 50,  # Bars to look back for liquidity
             "sweep_confirmation_bars": 2,  # Bars to confirm sweep
@@ -92,15 +92,16 @@ class LiquidityMapModule(BaseModule):
         bar_index = bar_state.get("bar_index", 0)
         high = bar_state.get("high", 0)
         low = bar_state.get("low", 0)
+        tick_size = bar_state.get("tick_size")
 
         is_swing_high = bar_state.get("is_swing_high", False)
         is_swing_low = bar_state.get("is_swing_low", False)
 
         if is_swing_high:
-            self._recent_highs.append({"bar_index": bar_index, "price": high})
+            self._recent_highs.append({"bar_index": bar_index, "price": high, "tick_size": tick_size})
 
         if is_swing_low:
-            self._recent_lows.append({"bar_index": bar_index, "price": low})
+            self._recent_lows.append({"bar_index": bar_index, "price": low, "tick_size": tick_size})
 
         # Cleanup old data
         max_size = self.config["lookback_bars"]
@@ -118,25 +119,40 @@ class LiquidityMapModule(BaseModule):
         if len(swings) < 2:
             return equal_levels
 
-        tolerance = self.config["equal_level_tolerance"]
+        prices = [s["price"] for s in swings[-10:] if s.get("price")]
+        if not prices:
+            return equal_levels
 
-        # Compare recent swings
-        prices = [s["price"] for s in swings[-10:]]
+        # Adaptive tolerance: use tick_size if present, else ratio
+        tick_size = None
+        for s in swings:
+            if s.get("tick_size"):
+                tick_size = s["tick_size"]
+                break
+        if tick_size:
+            tolerance_abs = tick_size * 2  # within 2 ticks
+        else:
+            tolerance_abs = None
+        tolerance_ratio = self.config["equal_level_tolerance"]
 
         for i, price in enumerate(prices):
             touches = 1
             for j, other_price in enumerate(prices):
-                if i != j:
-                    price_diff = abs(price - other_price)
-                    relative_diff = price_diff / price if price > 0 else float("inf")
-                    if relative_diff <= tolerance:
-                        touches += 1
+                if i == j:
+                    continue
+                price_diff = abs(price - other_price)
+                within_tick = tolerance_abs is not None and price_diff <= tolerance_abs
+                relative_diff = price_diff / price if price > 0 else float("inf")
+                within_ratio = relative_diff <= tolerance_ratio
+                if within_tick or within_ratio:
+                    touches += 1
 
             if touches >= self.config["min_touches"]:
                 equal_levels.append({
                     "price": price,
                     "touches": touches,
                     "type": f"equal_{level_type}s",
+                    "tick_size_used": tick_size,
                 })
 
         # Deduplicate

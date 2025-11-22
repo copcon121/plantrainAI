@@ -52,11 +52,6 @@ class VolumeDivergenceModule(BaseModule):
             "divergence_swing_count": divergence_info["swing_count"],
             "divergence_bars_ago": divergence_info["bars_ago"],
         }
-        # Track symbol to reset when switching streams/files
-        symbol = bar_state.get("symbol")
-        if symbol and symbol != self._last_symbol:
-            self._swing_history = []
-            self._last_symbol = symbol
 
     def _maybe_reset(self, bar_state: Dict[str, Any]) -> None:
         """Reset swing history on symbol change or early bars."""

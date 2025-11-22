@@ -50,7 +50,10 @@ class StructureContextModule(BaseModule):
     ) -> Dict[str, Any]:
         """Determine structure context for FVG."""
         current_bar = bar_state.get("bar_index", 0)
-        fvg_bar = bar_state.get("fvg_creation_bar_index", current_bar)
+        fvg_bar = bar_state.get(
+            "fvg_creation_bar_index",
+            bar_state.get("fvg_bar_index", current_bar),
+        )
         fvg_type = bar_state.get("fvg_type", "")
 
         # Check for recent structure breaks
@@ -153,7 +156,10 @@ class StructureContextModule(BaseModule):
         history: List[Dict[str, Any]],
     ) -> bool:
         """Check if FVG is in expansion leg (break leg)."""
-        fvg_bar = bar_state.get("fvg_creation_bar_index", bar_state.get("bar_index", 0))
+        fvg_bar = bar_state.get(
+            "fvg_creation_bar_index",
+            bar_state.get("fvg_bar_index", bar_state.get("bar_index", 0)),
+        )
         break_bar = structure_break.get("bar_index", 0)
         break_type = structure_break.get("type", "")
         fvg_type = bar_state.get("fvg_type", "")

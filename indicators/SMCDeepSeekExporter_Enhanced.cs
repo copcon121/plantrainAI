@@ -56,6 +56,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         private string exportFolder;
         private string currentDate;
         private string currentFilePath;
+        private int _lastFvgBarIndex = -1;
 
         #region Parameters
 
@@ -131,6 +132,7 @@ namespace NinjaTrader.NinjaScript.Indicators
             }
             else if (State == State.DataLoaded)
             {
+                _lastFvgBarIndex = -1;
                 // Compute indices of added series (order: primary M1 = 0, optional tick, then M5, then M15)
                 _m5Index = -1;
                 _m15Index = -1;
@@ -353,11 +355,16 @@ namespace NinjaTrader.NinjaScript.Indicators
                     // Note: Volumdelta doesn't expose buy/sell volumes separately
                     // We estimate: if deltaClose > 0, more buying; if < 0, more selling
                     double totalVol = Volumes[0][barsAgo]; // Use bar volume from primary series
-                    double absDelta = Math.Abs(deltaClose);
+                    if (totalVol < 0) totalVol = 0.0;
+                    double clampedDelta = deltaClose;
+                    if (totalVol > 0)
+                        clampedDelta = Math.Max(-totalVol, Math.Min(deltaClose, totalVol));
 
-                    // Estimate buy/sell split from delta
-                    double buyVol = (totalVol + deltaClose) / 2.0;
-                    double sellVol = (totalVol - deltaClose) / 2.0;
+                    // Estimate buy/sell split from delta (clamped)
+                    double buyVol = (totalVol + clampedDelta) / 2.0;
+                    double sellVol = totalVol - buyVol;
+                    if (buyVol < 0) buyVol = 0.0;
+                    if (sellVol < 0) sellVol = 0.0;
 
                     double deltaRatio = totalVol > 0 ? deltaClose / totalVol : 0.0;
                     double buyPct = totalVol > 0 ? (buyVol / totalVol) * 100.0 : 0.0;
@@ -561,8 +568,16 @@ namespace NinjaTrader.NinjaScript.Indicators
                 try { deltaClose = _volumdelta.DeltasClose[0]; } catch { deltaClose = 0.0; }
                 try { cumDelta = _volumdelta.DeltasClosecum[0]; } catch { cumDelta = 0.0; }
             }
-            double buyVol = (totalVol + deltaClose) / 2.0;
-            double sellVol = (totalVol - deltaClose) / 2.0;
+            if (totalVol < 0) totalVol = 0.0;
+            double clampedDelta = deltaClose;
+            if (totalVol > 0)
+            {
+                clampedDelta = Math.Max(-totalVol, Math.Min(deltaClose, totalVol));
+            }
+            double buyVol = (totalVol + clampedDelta) / 2.0;
+            double sellVol = totalVol - buyVol;
+            if (buyVol < 0) buyVol = 0.0;
+            if (sellVol < 0) sellVol = 0.0;
 
             AppendProp(sb, "volume", totalVol, false, false); sb.Append(",");
             AppendProp(sb, "buy_volume", buyVol, false, false); sb.Append(",");
@@ -876,9 +891,9 @@ namespace NinjaTrader.NinjaScript.Indicators
                 fvgBarIndex = smc.ActiveFvgBarIndex[barsAgo];
 
             bool fvgDetected = fvgDir != 0 && !double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom);
-            // Only mark fvg_detected on the creation bar; keep active state separately
+            // Only mark fvg_detected when bar index changes (creation pulse); keep active state separately
             bool fvgActive = fvgDetected;
-            bool fvgNew = fvgDetected && fvgBarIndex == CurrentBar;
+            bool fvgNew = fvgDetected && fvgBarIndex >= 0 && fvgBarIndex != _lastFvgBarIndex;
             string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : null);
             double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
 
@@ -893,6 +908,9 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "fvg_fill_percentage", 0.0, false, false);
             sb.Append(","); AppendProp(sb, "fvg_creation_volume", totalVol, false, false);
             sb.Append(","); AppendProp(sb, "fvg_creation_delta", deltaClose, false, false);
+
+            if (fvgNew)
+                _lastFvgBarIndex = fvgBarIndex;
 
             // OB details (nearest/active)
             int obDir = 0;
