@@ -25,6 +25,7 @@ from processor.modules.fix08_volume_divergence import VolumeDivergenceModule
 from processor.modules.fix09_volume_profile import VolumeProfileModule
 from processor.modules.fix10_mtf_alignment import MTFAlignmentModule
 from processor.modules.fix11_liquidity_map import LiquidityMapModule
+from processor.modules.fix12_fvg_retest import FVGRetestModule
 
 
 def load_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
@@ -57,6 +58,7 @@ def build_default_modules() -> List:
         MarketConditionModule(),
         MTFAlignmentModule(),
         OBQualityModule(),
+        FVGRetestModule(),
         FVGQualityModule(),
         StructureContextModule(),
         StopPlacementModule(),

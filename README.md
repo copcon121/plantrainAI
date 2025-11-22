@@ -80,7 +80,6 @@ SMC_indicator/
 
 ## MODULE LIST (SUMMARY)
 
-- **#12 FVG Retest Filter (NEW):** l?c/gate FVG retest (edge/shallow/deep/no_touch/break), xu?t `signal_type=fvg_retest_*`.
 - **#01 OB Quality:** t?nh ?i?m ch?t l??ng OB l?m context cho FVG.
 - **#02 FVG Quality (PRIMARY):** ph?t hi?n v? ch?m ?i?m FVG.
 - **#03 Structure Context:** tag expansion/retracement/continuation.
@@ -92,6 +91,26 @@ SMC_indicator/
 - **#09 Volume Profile:** VAH/VAL/POC ph?c v? thanh kho?n/target.
 - **#10 MTF Alignment:** ki?m tra ??ng pha khung cao.
 - **#11 Liquidity Map:** map thanh kho?n, sweep detection.
+- **#12 FVG Retest Filter (NEW):** l?c/gate FVG retest (edge/shallow/deep/no_touch/break), xu?t `signal_type=fvg_retest_*`.
+
+---
+
+## DEFAULT PIPELINE ORDER (BACKTEST & PROCESSOR)
+
+1) Volume Profile (#09)  
+2) Liquidity Map (#11)  
+3) Market Condition (#07)  
+4) MTF Alignment (#10)  
+5) OB Quality (#01)  
+6) FVG Retest Filter (#12)  
+7) FVG Quality (#02)  
+8) Structure Context (#03)  
+9) Stop Placement (#05)  
+10) Target Placement (#06)  
+11) Volume Divergence (#08)  
+12) Confluence (#04)
+
+Backtest runner `python -m processor.backtest.run_module_backtest` dùng thứ tự trên (đã cập nhật).
 
 ---
 
