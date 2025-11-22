@@ -291,27 +291,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             internal bool HitBottom;
         }
 
-        private List<OBZ> _obZones = new List<OBZ>();
-        private Brush _bullFill; private Brush _bullOutline; private Brush _bearFill; private Brush _bearOutline; private Brush _mitigatedOutline; private Brush _invalidOutline; private Brush _textBrush;
-
-        // ===== FVG =====
-        private class FVGZ
-        {
-            internal bool Bull;
-            internal int SourceBar;
-            internal int Age;
-            internal double Top;
-            internal double Bottom;
-            internal bool Removed;
-            internal string RectTag;
-            internal string LblTag;
-            internal bool Retested; // DeepSeek: mark first retest
-        }
-
-        private List<FVGZ> _fvgs = new List<FVGZ>();
-        private Brush _fvgBullFill; private Brush _fvgBullOutline; private Brush _fvgBearFill; private Brush _fvgBearOutline; private Brush _fvgTextBrush;
-        private double _cumAbsDeltaPct = 0.0; private int _cumCount = 0;
-
         private NinjaTrader.NinjaScript.Indicators.ATR _atr200;
         private NinjaTrader.NinjaScript.Indicators.ATR _atrDisp;
         #endregion
@@ -335,12 +314,9 @@ namespace NinjaTrader.NinjaScript.Indicators
         // OB/FVG retest pulses
         private Series<bool> _obExtRetestBull;
         private Series<bool> _obExtRetestBear;
-        private Series<bool> _fvgRetestBull;
-        private Series<bool> _fvgRetestBear;
+        // FVG retest series removed - logic now in Python Module 12
         private Series<double> _obExtRetestBullSL;
         private Series<double> _obExtRetestBearSL;
-        private Series<double> _fvgRetestBullSL;
-        private Series<double> _fvgRetestBearSL;
 
         // Context states
         private Series<bool> _hasActiveObExtBull;
@@ -597,12 +573,9 @@ namespace NinjaTrader.NinjaScript.Indicators
 
                 _obExtRetestBull = new Series<bool>(this);
                 _obExtRetestBear = new Series<bool>(this);
-                _fvgRetestBull = new Series<bool>(this);
-                _fvgRetestBear = new Series<bool>(this);
+                // FVG retest series removed - logic in Module 12
                 _obExtRetestBullSL = new Series<double>(this);
                 _obExtRetestBearSL = new Series<double>(this);
-                _fvgRetestBullSL = new Series<double>(this);
-                _fvgRetestBearSL = new Series<double>(this);
 
                 _hasActiveObExtBull = new Series<bool>(this);
                 _hasActiveObExtBear = new Series<bool>(this);
@@ -1252,12 +1225,9 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             if (_obExtRetestBull != null) _obExtRetestBull[0] = false;
             if (_obExtRetestBear != null) _obExtRetestBear[0] = false;
-            if (_fvgRetestBull != null) _fvgRetestBull[0] = false;
-            if (_fvgRetestBear != null) _fvgRetestBear[0] = false;
+            // FVG retest pulse reset removed - logic in Module 12
             if (_obExtRetestBullSL != null) _obExtRetestBullSL[0] = double.NaN;
             if (_obExtRetestBearSL != null) _obExtRetestBearSL[0] = double.NaN;
-            if (_fvgRetestBullSL != null) _fvgRetestBullSL[0] = double.NaN;
-            if (_fvgRetestBearSL != null) _fvgRetestBearSL[0] = double.NaN;
 
             // Propagate swing levels from previous bar (unless updated by UpdateExtSwingHigh/Low)
             if (CurrentBar > 0)
@@ -2137,7 +2107,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 up.SourceBar = CurrentBar - 1;
                 up.Age = 0;
                 up.Removed = false;
-                up.Retested = false;
+                // Retested field removed - logic in Module 12
                 up.Top = Math.Max(top, bottom);
                 up.Bottom = Math.Min(top, bottom);
                 up.RectTag = "FVGRECT_" + (bull ? "B" : "S") + "_" + up.SourceBar.ToString();
@@ -2176,44 +2146,10 @@ namespace NinjaTrader.NinjaScript.Indicators
                     continue;
                 }
 
-                // First retest logic:
-                if (!z.Retested)
-                {
-                    double intoPx = tickSize * Math.Max(0, FVGRetestTicksIntoZone);
+                // FVG retest detection removed - now handled in Python Module 12
+                // Module 12 provides comprehensive retest classification (edge/shallow/deep)
+                // with quality scoring, context validation, and adaptive filters
 
-                    if (z.Bull)
-                    {
-                        // Cho phép retest khi giá đóng cửa cách cạnh trên tối đa intoPx tick và gap vẫn còn mở
-                        double upperBuffer = z.Top + intoPx;
-                        bool nearTop = Close[0] <= upperBuffer;
-                        bool gapStillOpen = Low[0] > z.Bottom;
-
-                        if (nearTop && gapStillOpen)
-                        {
-                            if (_fvgRetestBull != null)
-                                _fvgRetestBull[0] = true;
-                            if (_fvgRetestBullSL != null)
-                                _fvgRetestBullSL[0] = z.Bottom - 2.0 * tickSize;
-                            z.Retested = true;
-                        }
-                    }
-                    else
-                    {
-                        // Ngược lại cho FVG bearish: chỉ cần đóng nến trong vòng intoPx tick phía dưới cạnh dưới
-                        double lowerBuffer = z.Bottom - intoPx;
-                        bool nearBottom = Close[0] >= lowerBuffer;
-                        bool gapStillOpen = High[0] < z.Top;
-
-                        if (nearBottom && gapStillOpen)
-                        {
-                            if (_fvgRetestBear != null)
-                                _fvgRetestBear[0] = true;
-                            if (_fvgRetestBearSL != null)
-                                _fvgRetestBearSL[0] = z.Top + 2.0 * tickSize;
-                            z.Retested = true;
-                        }
-                    }
-                }
                 if (z.Age <= FVGExtendBars)
                     DrawFVG(z, true);
                 else
@@ -2403,11 +2339,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         [Browsable(false), XmlIgnore]
         public Series<bool> ObExtRetestBear { get { return _obExtRetestBear; } }
 
-        [Browsable(false), XmlIgnore]
-        public Series<bool> FvgRetestBull { get { return _fvgRetestBull; } }
-
-        [Browsable(false), XmlIgnore]
-        public Series<bool> FvgRetestBear { get { return _fvgRetestBear; } }
+        // FVG retest public properties removed - logic in Module 12
 
         [Browsable(false), XmlIgnore]
         public Series<double> ObExtRetestBullSL { get { return _obExtRetestBullSL; } }
@@ -2415,11 +2347,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         [Browsable(false), XmlIgnore]
         public Series<double> ObExtRetestBearSL { get { return _obExtRetestBearSL; } }
 
-        [Browsable(false), XmlIgnore]
-        public Series<double> FvgRetestBullSL { get { return _fvgRetestBullSL; } }
-
-        [Browsable(false), XmlIgnore]
-        public Series<double> FvgRetestBearSL { get { return _fvgRetestBearSL; } }
+        // FVG retest public properties removed - logic in Module 12
 
         [Browsable(false), XmlIgnore]
         public Series<bool> HasActiveObExtBull { get { return _hasActiveObExtBull; } }

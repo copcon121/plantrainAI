@@ -11,6 +11,19 @@ from typing import Any, Dict, List
 
 from processor.core.module_base import BaseModule
 
+"""
+Fix #09: Volume Profile.
+Implement per docs/MODULE_FIX09_VOLUME_PROFILE.md.
+
+Computes session-based volume profile levels:
+- VAH (Value Area High)
+- VAL (Value Area Low)
+- POC (Point of Control)
+"""
+from typing import Any, Dict, List
+
+from processor.core.module_base import BaseModule
+
 
 class VolumeProfileModule(BaseModule):
     """Volume Profile Module."""
@@ -22,9 +35,10 @@ class VolumeProfileModule(BaseModule):
         self.config = {
             "value_area_pct": 0.70,  # 70% of volume
             "price_bins": 50,  # Number of price bins
-            "session_lookback": 100,  # Bars to consider for session
+            "max_session_bars": 2000,  # Safety cap to prevent memory issues
         }
         self._session_data: List[Dict[str, Any]] = []
+        self._current_session: str | None = None
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
@@ -34,6 +48,12 @@ class VolumeProfileModule(BaseModule):
             return bar_state
 
         history = history or []
+
+        # Check for session change
+        current_session = bar_state.get("session", "unknown")
+        if current_session != self._current_session:
+            self._session_data = []  # Reset profile for new session
+            self._current_session = current_session
 
         # Accumulate session data
         self._update_session_data(bar_state)
@@ -68,9 +88,9 @@ class VolumeProfileModule(BaseModule):
         }
         self._session_data.append(bar_data)
 
-        # Keep only recent bars
-        if len(self._session_data) > self.config["session_lookback"]:
-            self._session_data = self._session_data[-self.config["session_lookback"]:]
+        # Safety cap only (not sliding window)
+        if len(self._session_data) > self.config["max_session_bars"]:
+            self._session_data.pop(0)
 
     def _calculate_volume_profile(self) -> Dict[str, Any]:
         """Calculate VAH, VAL, POC from session data."""
