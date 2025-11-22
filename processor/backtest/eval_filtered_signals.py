@@ -25,13 +25,13 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 DEFAULT_FILTER = {
-    "min_retest_quality": 0.6,
+    "min_retest_quality": 0.75,
     "allowed_retest_types": {"edge", "shallow"},
-    "min_fvg_quality": 0.0,  # some pipelines may not score quality on retest bar
-    "min_confluence": 0.0,  # allow low confluence during early screening
-    "require_alignment": True,
-    "allowed_market": set(),  # accept all unless specified
-    "max_lookahead": 50,
+    "min_fvg_quality": 0.2,
+    "min_confluence": 0.1,
+    "require_alignment": True,  # bật alignment có điều kiện (chỉ lấy khi mtf_is_aligned True)
+    "allowed_market": {"trending_weak", "trending_strong"},
+    "max_lookahead": 70,
 }
 
 
@@ -141,7 +141,40 @@ def process_file(path: Path, cfg: Dict[str, Any]) -> Dict[str, Any]:
     records = list(load_jsonl(path))
     trades: List[Dict[str, Any]] = []
 
+    # Track last non-zero stop/tp seen per direction (inferred from fvg_type)
+    last_stop_bull: float | None = None
+    last_stop_bear: float | None = None
+    last_tp_bull: float | None = None
+    last_tp_bear: float | None = None
+
     for i, rec in enumerate(records):
+        # update trailing stop/tp from this bar, regardless of filter pass
+        dir_hint = 1 if rec.get("fvg_type") == "bullish" else -1 if rec.get("fvg_type") == "bearish" else None
+        stop_candidates = [
+            rec.get("sl"),
+            rec.get("stop_price"),
+            rec.get("stop_invalidation_level"),
+        ]
+        stop_val = next((float(x) for x in stop_candidates if x not in (None, 0, 0.0)), 0.0)
+        if stop_val != 0.0:
+            if dir_hint == 1:
+                last_stop_bull = stop_val
+            elif dir_hint == -1:
+                last_stop_bear = stop_val
+
+        tp_candidates_all = [
+            rec.get("tp"),
+            rec.get("tp1_price"),
+            rec.get("tp2_price"),
+            rec.get("tp3_price"),
+        ]
+        tp_val = next((float(x) for x in tp_candidates_all if x not in (None, 0, 0.0)), 0.0)
+        if tp_val != 0.0:
+            if dir_hint == 1:
+                last_tp_bull = tp_val
+            elif dir_hint == -1:
+                last_tp_bear = tp_val
+
         if not passes_filter(rec, cfg):
             continue
         direction = 1 if rec.get("signal_type") == "fvg_retest_bull" else -1
@@ -163,7 +196,19 @@ def process_file(path: Path, cfg: Dict[str, Any]) -> Dict[str, Any]:
         ]
         tp = float(next((x for x in tp_candidates if x not in (None, 0, 0.0)), 0.0))
 
-        # Fallback: derive SL/TP from FVG bounds if missing
+        # If current bar has zero stop/tp, reuse last non-zero from history
+        if sl == 0.0:
+            if direction == 1 and last_stop_bull:
+                sl = last_stop_bull
+            elif direction == -1 and last_stop_bear:
+                sl = last_stop_bear
+        if tp == 0.0:
+            if direction == 1 and last_tp_bull:
+                tp = last_tp_bull
+            elif direction == -1 and last_tp_bear:
+                tp = last_tp_bear
+
+        # Fallback: derive SL from FVG bounds if missing
         if sl == 0.0:
             fvg_top = float(rec.get("fvg_top") or 0.0)
             fvg_bottom = float(rec.get("fvg_bottom") or 0.0)
@@ -171,6 +216,8 @@ def process_file(path: Path, cfg: Dict[str, Any]) -> Dict[str, Any]:
                 sl = fvg_bottom
             elif direction == -1 and fvg_top > 0:
                 sl = fvg_top
+
+        # If still missing TP, fall back to RR=3 (legacy)
         if tp == 0.0 and sl != 0.0:
             risk = (entry - sl) if direction == 1 else (sl - entry)
             if risk > 0:
@@ -185,6 +232,7 @@ def process_file(path: Path, cfg: Dict[str, Any]) -> Dict[str, Any]:
             tp,
             max_lookahead=cfg["max_lookahead"],
         )
+        # Skip trades where SL/TP could not be resolved
         if outcome is None:
             continue
         trades.append(outcome | {"index": i, "direction": direction})

@@ -42,6 +42,61 @@ def write_jsonl(path: Path, records: Iterable[Dict[str, Any]]) -> None:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
+def _get_high_low(rec: Dict[str, Any]) -> tuple[float, float]:
+    high = rec.get("high")
+    low = rec.get("low")
+    bar = rec.get("bar") or {}
+    if high is None:
+        high = bar.get("h")
+    if low is None:
+        low = bar.get("l")
+    return float(high or 0.0), float(low or 0.0)
+
+
+def annotate_outcomes(records: list[Dict[str, Any]], max_lookahead: int = 80) -> None:
+    """
+    Annotate records with outcome for FVG retest signals.
+    Fields added: outcome_label (win/loss/open), outcome_rr, outcome_bars_to_exit, outcome_hit (tp/sl/open).
+    """
+    for i, rec in enumerate(records):
+        if not rec.get("fvg_retest_detected"):
+            continue
+        direction = 1 if rec.get("signal_type") == "fvg_retest_bull" else -1 if rec.get("signal_type") == "fvg_retest_bear" else 0
+        if direction == 0:
+            continue
+        entry = float(rec.get("entry") or rec.get("close") or 0.0)
+        sl = float(rec.get("stop_price") or rec.get("sl") or 0.0)
+        tp_candidates = [
+            rec.get("tp"),
+            rec.get("tp1_price"),
+            rec.get("tp2_price"),
+            rec.get("tp3_price"),
+        ]
+        tp = float(next((x for x in tp_candidates if x not in (None, 0, 0.0)), 0.0))
+        if entry == 0.0 or sl == 0.0 or tp == 0.0:
+            continue
+        risk = (entry - sl) if direction == 1 else (sl - entry)
+        if risk <= 0:
+            continue
+
+        last_bar = min(len(records) - 1, i + max_lookahead)
+        outcome = {"outcome_label": "open", "outcome_rr": 0.0, "outcome_bars_to_exit": max_lookahead, "outcome_hit": "open"}
+        for j in range(i + 1, last_bar + 1):
+            hi, lo = _get_high_low(records[j])
+            hit_sl = lo <= sl if direction == 1 else hi >= sl
+            hit_tp = hi >= tp if direction == 1 else lo <= tp
+            if hit_sl and hit_tp:
+                outcome = {"outcome_label": "loss", "outcome_rr": -1.0, "outcome_bars_to_exit": j - i, "outcome_hit": "sl_tp_same_bar"}
+                break
+            if hit_sl:
+                outcome = {"outcome_label": "loss", "outcome_rr": -1.0, "outcome_bars_to_exit": j - i, "outcome_hit": "sl"}
+                break
+            if hit_tp:
+                outcome = {"outcome_label": "win", "outcome_rr": (tp - entry) / risk if direction == 1 else (entry - tp) / risk, "outcome_bars_to_exit": j - i, "outcome_hit": "tp"}
+                break
+        rec.update(outcome)
+
+
 def build_default_modules() -> List:
     """
     Default pipeline order per dependency matrix:
@@ -95,6 +150,12 @@ def main() -> None:
     parser.add_argument("--inputs", required=True, help="Path to input JSONL")
     parser.add_argument("--output", required=False, help="Path to write enriched JSONL")
     parser.add_argument("--summary", required=False, help="Path to write summary JSON")
+    parser.add_argument(
+        "--max-lookahead",
+        type=int,
+        default=80,
+        help="Bars to look ahead when annotating outcomes for retest signals.",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.inputs)
@@ -107,6 +168,9 @@ def main() -> None:
     enriched: List[Dict[str, Any]] = []
     for bar in load_jsonl(input_path):
         enriched.append(processor.process_bar(bar))
+
+    # Annotate outcomes for retest signals (uses stop/tp if present)
+    annotate_outcomes(enriched, max_lookahead=args.max_lookahead)
 
     if out_path:
         write_jsonl(out_path, enriched)

@@ -713,6 +713,7 @@ Weekly Reviews:
 
 **Version History:**
 - v1.0.0 (2025-11-20): Initial master plan created
+- v1.0.1 (2025-11-22): Exporter updated to emit top-level sweep_prev_high/low and HTF BOS/CHOCH pulses; next actions: recompile Ninja indicator, re-export raw JSONL, rerun `eval_retest_raw` for baseline PF.
 
 **Last Updated:** November 20, 2025
 

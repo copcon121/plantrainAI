@@ -25,6 +25,10 @@ class FVGRetestModule(BaseModule):
             "edge_penetration": 0.15,
             "shallow_penetration": 0.45,
             "deep_penetration": 0.8,
+            "structure_lookback": 30,
+            # Loosened: allow context via sweep/premium/discount/OB if structure is absent
+            "require_structure_context": False,
+            "min_hold_bars": 5,  # FVG must exist at least N bars before retest
         }
 
     def process_bar(
@@ -34,6 +38,9 @@ class FVGRetestModule(BaseModule):
             return bar_state
 
         history = history or []
+        # attach history for context lookup in reversal checks (not serialized)
+        bar_state["_history"] = history
+        base_state = {k: v for k, v in bar_state.items() if k != "_history"}
 
         # Require active FVG zone
         fvg_active = bar_state.get("fvg_active", False) or bar_state.get(
@@ -47,15 +54,17 @@ class FVGRetestModule(BaseModule):
         atr = bar_state.get("atr_14", 0.0) or 0.0
 
         if not fvg_active or fvg_top == 0 or fvg_bottom == 0 or fvg_type is None:
-            return {**bar_state, **self._default_output("no_fvg")}
+            return {**base_state, **self._default_output("no_fvg")}
 
         age_bars = max(bar_index - fvg_bar_index, 0)
+        if age_bars < self.config["min_hold_bars"]:
+            return {**base_state, **self._default_output("too_young")}
         if age_bars > self.config["max_age_bars"]:
-            return {**bar_state, **self._default_output("stale")}
+            return {**base_state, **self._default_output("stale")}
 
         gap_size = abs(fvg_top - fvg_bottom)
         if gap_size <= 0:
-            return {**bar_state, **self._default_output("invalid_gap")}
+            return {**base_state, **self._default_output("invalid_gap")}
 
         # Compute fill% from current price if not provided
         fill_percent = bar_state.get("fvg_fill_percent")
@@ -69,12 +78,12 @@ class FVGRetestModule(BaseModule):
         )
 
         if fill_percent >= self.config["max_fill_pct"] or retest_type == "break":
-            return {**bar_state, **self._default_output("break_or_filled")}
+            return {**base_state, **self._default_output("break_or_filled")}
 
         # Context triggers (must have at least one)
         context_ok = self._has_reversal_context(fvg_type, bar_state)
         if not context_ok:
-            return {**bar_state, **self._default_output("no_context")}
+            return {**base_state, **self._default_output("no_context")}
 
         # Score retest quality
         strength_score = bar_state.get("fvg_strength_score", 0.5)
@@ -95,7 +104,7 @@ class FVGRetestModule(BaseModule):
             signal_type = "fvg_retest_bull" if fvg_type == "bullish" else "fvg_retest_bear"
 
         return {
-            **bar_state,
+            **base_state,
             "fvg_retest_detected": retest_valid,
             "fvg_retest_type": retest_type,
             "fvg_retest_quality_score": round(retest_quality, 4),
@@ -168,31 +177,48 @@ class FVGRetestModule(BaseModule):
         return 0.0
 
     def _has_reversal_context(self, fvg_type: str, bar_state: Dict[str, Any]) -> bool:
+        """
+        Require recent BOS/CHoCH on M1 as a stop-run/flip before the FVG forms.
+        For bullish retest: look for bearish BOS/CHoCH recently (liquidity grab down, then FVG up).
+        For bearish retest: look for bullish BOS/CHoCH recently (liquidity grab up, then FVG down).
+        """
         is_bull = fvg_type == "bullish"
-        sweep_up = bar_state.get("sweep_prev_high") or (
-            bar_state.get("liquidity_sweep_detected")
-            and bar_state.get("liquidity_sweep_type", "").startswith("sweep_above")
-        )
-        sweep_down = bar_state.get("sweep_prev_low") or (
-            bar_state.get("liquidity_sweep_detected")
-            and bar_state.get("liquidity_sweep_type", "").startswith("sweep_below")
-        )
 
-        bos_up = bar_state.get("ext_bos_up") or bar_state.get("int_bos_up")
-        bos_down = bar_state.get("ext_bos_down") or bar_state.get("int_bos_down")
-        choch_up = bar_state.get("ext_choch_up") or bar_state.get("int_choch_up")
-        choch_down = bar_state.get("ext_choch_down") or bar_state.get("int_choch_down")
+        def _get_flag(rec: Dict[str, Any], name: str) -> bool:
+            if name in rec:
+                return bool(rec.get(name))
+            bar = rec.get("bar") or {}
+            return bool(bar.get(name))
 
-        premium = bar_state.get("in_premium") or bar_state.get("vp_position") == "upper_va"
-        discount = bar_state.get("in_discount") or bar_state.get("vp_position") == "lower_va"
+        # Check current bar first (opposite-direction structure break)
+        if is_bull and (_get_flag(bar_state, "ext_bos_down") or _get_flag(bar_state, "ext_choch_down")):
+            return True
+        if (not is_bull) and (_get_flag(bar_state, "ext_bos_up") or _get_flag(bar_state, "ext_choch_up")):
+            return True
 
+        # Look back a short window for recent structure break
+        if self.config["require_structure_context"]:
+            history: List[Dict[str, Any]] = bar_state.get("_history", [])
+            for rec in reversed(history[-self.config["structure_lookback"] :]):
+                if is_bull and (_get_flag(rec, "ext_bos_down") or _get_flag(rec, "ext_choch_down")):
+                    return True
+                if (not is_bull) and (_get_flag(rec, "ext_bos_up") or _get_flag(rec, "ext_choch_up")):
+                    return True
+
+        # If structure not required, accept presence of sweep or premium/discount context
+        sweep_up = bar_state.get("sweep_prev_high") or _get_flag(bar_state, "sweep_prev_high")
+        sweep_down = bar_state.get("sweep_prev_low") or _get_flag(bar_state, "sweep_prev_low")
+        premium = bar_state.get("in_premium") or (bar_state.get("vp_position") == "upper_va")
+        discount = bar_state.get("in_discount") or (bar_state.get("vp_position") == "lower_va")
         ob_bull = bar_state.get("has_ob_ext_bull")
         ob_bear = bar_state.get("has_ob_ext_bear")
 
-        if is_bull:
-            return sweep_down or bos_up or choch_up or discount or ob_bull
-        else:
-            return sweep_up or bos_down or choch_down or premium or ob_bear
+        if is_bull and (sweep_down or discount or ob_bull):
+            return True
+        if (not is_bull) and (sweep_up or premium or ob_bear):
+            return True
+
+        return False
 
     def _distance_atr(
         self, fvg_type: str, top: float, bottom: float, bar: Dict[str, Any], atr: float

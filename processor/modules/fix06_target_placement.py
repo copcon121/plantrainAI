@@ -34,14 +34,18 @@ class TargetPlacementModule(BaseModule):
         if not self.enabled:
             return bar_state
 
-        # Need FVG and stop to calculate targets
-        if not bar_state.get("fvg_detected", False):
+        # Need FVG (or retest) and stop to calculate targets
+        if not (
+            bar_state.get("fvg_detected", False)
+            or bar_state.get("fvg_retest_detected", False)
+            or bar_state.get("fvg_active", False)
+        ):
             return {**bar_state, **self._default_output(reason="no_fvg")}
 
         fvg_type = bar_state.get("fvg_type", "bullish")
         fvg_direction = 1 if fvg_type == "bullish" else -1
 
-        entry_price = bar_state.get("close", 0)
+        entry_price = bar_state.get("entry", bar_state.get("close", 0))
         stop_price = bar_state.get("stop_price", 0)
         atr = bar_state.get("atr_14", 0.01)
 

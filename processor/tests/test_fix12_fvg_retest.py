@@ -21,7 +21,7 @@ class TestFVGRetestModule:
             "low": 100.95,  # Edge penetration into FVG zone
             "atr_14": 0.5,
             "fvg_strength_score": 0.8,
-            "ext_bos_up": True,
+            "ext_bos_down": True,  # stop-run down then FVG up
         }
 
     def test_edge_retest_valid(self):
@@ -40,7 +40,7 @@ class TestFVGRetestModule:
             "fvg_bottom": 99.5,
             "high": 100.8,  # break through (high > fvg_top)
             "low": 99.6,
-            "ext_bos_down": True,
+            "ext_bos_up": True,  # stop-run up then FVG down
         }
         result = self.module.process_bar(bar)
         assert result["fvg_retest_detected"] is False
@@ -56,6 +56,9 @@ class TestFVGRetestModule:
     def test_no_context_rejected(self):
         bar = {**self.base_bar}
         bar.pop("ext_bos_up", None)
+        bar.pop("ext_bos_down", None)
+        bar.pop("ext_choch_up", None)
+        bar.pop("ext_choch_down", None)
         result = self.module.process_bar(bar)
         assert result["fvg_retest_detected"] is False
         assert result["fvg_retest_reason"] == "no_context"

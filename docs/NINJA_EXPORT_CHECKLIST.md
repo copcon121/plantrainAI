@@ -128,10 +128,12 @@ This document contains the **complete list of fields** that the NinjaTrader indi
 | SMC Events (FVG) | 12 | Custom FVG detection | **MUST** |
 | SMC Events (CHoCH/BOS) | 16 | Custom CHoCH detection | **MUST** |
 | Swing Structure | 6 | Swing indicator | **MUST** |
+| Sweep (Top-level) | 2 | From bar pulses | HIGH |
 | **EQH/EQL Detection** | 6 | Liquidity detection | HIGH |
 | **Volume Profile** | 8 | VP indicator | MEDIUM |
 | Market Context | 4 | ATR, ADX | **MUST** |
 | HTF Data | 7 | Multi-series | HIGH |
+| HTF Structure (pulses) | 4 | Higher TF CHoCH/BOS | HIGH |
 | Liquidity Map | 6 | Liquidity tracking | HIGH |
 | **TOTAL** | **~102** | | |
 

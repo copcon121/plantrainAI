@@ -649,6 +649,8 @@ namespace NinjaTrader.NinjaScript.Indicators
             bool fvgNew = fvgDetected && fvgBarIndex >= 0 && fvgBarIndex != _lastFvgBarIndex;
             string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : "none");
             double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
+            double fvgCreationHigh = High[0];
+            double fvgCreationLow = Low[0];
 
             sb.Append(","); AppendProp(sb, "fvg_detected", fvgNew, false, false);
             sb.Append(","); AppendProp(sb, "fvg_active", fvgActive, false, false);
@@ -661,6 +663,8 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "fvg_fill_percentage", 0.0, false, false);
             sb.Append(","); AppendProp(sb, "fvg_creation_volume", double.IsNaN(totalVol) ? 0.0 : totalVol, false, false);
             sb.Append(","); AppendProp(sb, "fvg_creation_delta", double.IsNaN(deltaClose) ? 0.0 : deltaClose, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_high", fvgCreationHigh, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_creation_low", fvgCreationLow, false, false);
 
             int obDir = 0;
             double obTop = double.NaN, obBottom = double.NaN;
@@ -702,6 +706,13 @@ namespace NinjaTrader.NinjaScript.Indicators
             bool chochDown = smc != null && GetSeriesBool(smc.ExtChochDownPulse, 0);
             bool bosUp = smc != null && GetSeriesBool(smc.ExtBosUpPulse, 0);
             bool bosDown = smc != null && GetSeriesBool(smc.ExtBosDownPulse, 0);
+            bool sweepPrevHigh = smc != null && GetSeriesBool(smc.SweepPrevHighPulse, 0);
+            bool sweepPrevLow = smc != null && GetSeriesBool(smc.SweepPrevLowPulse, 0);
+            // HTF structure pulses (e.g., M5/M15) if available
+            bool htfBosUp = smc != null && GetSeriesBool(smc.M5_BosUpPulseSeries, 0);
+            bool htfBosDown = smc != null && GetSeriesBool(smc.M5_BosDownPulseSeries, 0);
+            bool htfChochUp = smc != null && GetSeriesBool(smc.M5_ChochUpPulseSeries, 0);
+            bool htfChochDown = smc != null && GetSeriesBool(smc.M5_ChochDownPulseSeries, 0);
 
             bool chochDetected = chochUp || chochDown;
             bool bosDetected = bosUp || bosDown;
@@ -718,6 +729,12 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendPropNullableString(sb, "bos_type", bosType, false);
             sb.Append(","); AppendProp(sb, "bos_bars_ago", bosDetected ? 0 : -1, false, false);
             sb.Append(","); AppendPropNullableString(sb, "last_structure_break", lastStructureBreak, false);
+            sb.Append(","); AppendProp(sb, "sweep_prev_high", sweepPrevHigh, false, false);
+            sb.Append(","); AppendProp(sb, "sweep_prev_low", sweepPrevLow, false, false);
+            sb.Append(","); AppendProp(sb, "htf_bos_type", htfBosUp ? "bullish" : (htfBosDown ? "bearish" : "none"), true, true);
+            sb.Append(","); AppendProp(sb, "htf_choch_type", htfChochUp ? "bullish" : (htfChochDown ? "bearish" : "none"), true, true);
+            sb.Append(","); AppendProp(sb, "htf_bos_bars_ago", htfBosUp || htfBosDown ? 0 : -1, false, false);
+            sb.Append(","); AppendProp(sb, "htf_choch_bars_ago", htfChochUp || htfChochDown ? 0 : -1, false, false);
 
             int currentTrend = smc != null && smc.ExtStructureDir != null && HasSeriesValue(smc.ExtStructureDir, 0)
                 ? smc.ExtStructureDir[0]

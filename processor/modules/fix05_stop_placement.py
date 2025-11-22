@@ -44,8 +44,12 @@ class StopPlacementModule(BaseModule):
         if not self.enabled:
             return bar_state
 
-        # Only calculate for FVG signals
-        if not bar_state.get("fvg_detected", False):
+        # Only calculate for FVG signals (include retest/active)
+        if not (
+            bar_state.get("fvg_detected", False)
+            or bar_state.get("fvg_retest_detected", False)
+            or bar_state.get("fvg_active", False)
+        ):
             return {**bar_state, **self._default_output(reason="no_fvg")}
 
         # Get required fields
@@ -53,7 +57,7 @@ class StopPlacementModule(BaseModule):
         fvg_direction = 1 if fvg_type == "bullish" else -1
         fvg_top = bar_state.get("fvg_top", 0)
         fvg_bottom = bar_state.get("fvg_bottom", 0)
-        entry_price = bar_state.get("close", (fvg_top + fvg_bottom) / 2)
+        entry_price = bar_state.get("entry", bar_state.get("close", (fvg_top + fvg_bottom) / 2))
         atr = bar_state.get("atr_14", 0.01)
 
         ob_top = bar_state.get("nearest_ob_top")
