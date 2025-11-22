@@ -21,6 +21,7 @@
 | #09 Volume Profile | 8 | `vp_*`, `prev_session_vah/val/poc` | MEDIUM |
 | #10 MTF Alignment | 9 | `htf_*`, `current_trend` | HIGH |
 | #11 Liquidity Map | 14 | `eqh_*`, `eql_*`, `liquidity_*`, `swing_*` | HIGH |
+| #12 FVG Retest Filter | 10 | `fvg_*`, O/H/L/C, `atr_14`, sweep/BOS/CHOCH context | **MUST** (for signal gating) |
 
 ---
 
@@ -81,6 +82,28 @@
 - `fvg_volume_factor` = creation_volume / median_20
 - `fvg_displacement` = |close - open| / ATR
 - `fvg_delta_imbalance` = |delta| / volume
+
+---
+
+### 2.2b Module #12 - FVG Retest Filter (Signal Gate)
+
+**Purpose:** Detect/score valid FVG retests, filter tín hiệu, cung cấp `signal_type=fvg_retest_*`.
+
+| Field | Type | Description | Usage |
+|-------|------|-------------|-------|
+| `fvg_active` | bool | Có FVG đang hiệu lực | Gate |
+| `fvg_detected` | bool | Pulse tạo FVG | Age reset |
+| `fvg_type` | string | "bullish"/"bearish" | Direction |
+| `fvg_top` / `fvg_bottom` | float | Ranh FVG | Penetration calc |
+| `fvg_bar_index` | int | Bar tạo FVG | Age calc |
+| `fvg_strength_score` | float | Điểm FVG (fix02) | Scale retest score |
+| `high` / `low` / `close` | float | Bar hiện tại | Retest geometry |
+| `atr_14` | float | ATR | Normalization |
+| `sweep_prev_high/low` | bool | Sweep context | Trigger |
+| `ext_bos_up/down`, `ext_choch_up/down` | bool | Structure pulse | Trigger |
+| `in_premium` / `in_discount` | bool | Premium/discount | Bonus/penalty |
+
+**Outputs (Python):** `fvg_retest_detected`, `fvg_retest_type` (edge/shallow/deep/no_touch/break), `fvg_retest_quality_score`, `signal_type=fvg_retest_bull/bear` when valid.
 
 ---
 
@@ -392,21 +415,22 @@ def validate_module_dependencies(bar: dict, module: str) -> list:
 ## 4. IMPLEMENTATION ORDER
 
 ### Phase 1 - Core (Must Have)
-1. Module #02 - FVG Quality (PRIMARY)
-2. Module #03 - Structure Context
-3. Module #05 - Stop Placement
-4. Module #04 - Confluence (combines above)
+1. Module #12 - FVG Retest Filter (signal gate)
+2. Module #02 - FVG Quality (PRIMARY)
+3. Module #03 - Structure Context
+4. Module #05 - Stop Placement
+5. Module #04 - Confluence (combines above)
 
 ### Phase 2 - Enhancement
-5. Module #07 - Market Condition
-6. Module #10 - MTF Alignment
-7. Module #08 - Volume Divergence
+6. Module #07 - Market Condition
+7. Module #10 - MTF Alignment
+8. Module #08 - Volume Divergence
 
 ### Phase 3 - Advanced
-8. Module #01 - OB Quality
-9. Module #06 - Target Placement
-10. Module #09 - Volume Profile
-11. Module #11 - Liquidity Map
+9. Module #01 - OB Quality
+10. Module #06 - Target Placement
+11. Module #09 - Volume Profile
+12. Module #11 - Liquidity Map
 
 ---
 
@@ -416,3 +440,4 @@ def validate_module_dependencies(bar: dict, module: str) -> list:
 |---------|------|---------|
 | 1.0 | 2024-11-21 | Initial matrix creation |
 | 1.1 | 2025-11-21 | Added tick_size for VP binning, HTF BOS/CHoCH fields, EQH/EQL touch counts, session_name for market condition, symbol reset for divergence, ATR percentile clarification. |
+| 1.2 | 2025-11-21 | Added Module #12 FVG Retest Filter (inputs/outputs) and pipeline order update. |

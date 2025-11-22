@@ -726,9 +726,15 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendProp(sb, "di_plus_14", diPlus, false, false);
             sb.Append(","); AppendProp(sb, "di_minus_14", diMinus, false, false);
 
-            // Volume divergence swing flags (reuse ext swing pattern)
+            // Volume divergence swing flags (reuse ext swing pattern; fallback to simple local swing check)
             bool isSwingHigh = smc != null && smc.ExtSwingPattern != null && HasSeriesValue(smc.ExtSwingPattern, 0) && smc.ExtSwingPattern[0] == 1;
             bool isSwingLow = smc != null && smc.ExtSwingPattern != null && HasSeriesValue(smc.ExtSwingPattern, 0) && smc.ExtSwingPattern[0] == -1;
+            if (!isSwingHigh && !isSwingLow)
+            {
+                int swingLookback = 3;
+                isSwingHigh = IsLocalSwingHigh(swingLookback);
+                isSwingLow = IsLocalSwingLow(swingLookback);
+            }
             sb.Append(","); AppendProp(sb, "is_swing_high", isSwingHigh, false, false);
             sb.Append(","); AppendProp(sb, "is_swing_low", isSwingLow, false, false);
 
@@ -870,10 +876,14 @@ namespace NinjaTrader.NinjaScript.Indicators
                 fvgBarIndex = smc.ActiveFvgBarIndex[barsAgo];
 
             bool fvgDetected = fvgDir != 0 && !double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom);
+            // Only mark fvg_detected on the creation bar; keep active state separately
+            bool fvgActive = fvgDetected;
+            bool fvgNew = fvgDetected && fvgBarIndex == CurrentBar;
             string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : null);
             double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
 
-            sb.Append(","); AppendProp(sb, "fvg_detected", fvgDetected, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_detected", fvgNew, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_active", fvgActive, false, false);
             sb.Append(","); AppendPropNullableString(sb, "fvg_type", fvgType, false);
             sb.Append(","); AppendProp(sb, "fvg_top", fvgTop, false, false);
             sb.Append(","); AppendProp(sb, "fvg_bottom", fvgBottom, false, false);
@@ -1128,6 +1138,29 @@ namespace NinjaTrader.NinjaScript.Indicators
         {
             double rounded = Math.Round(value, 1, MidpointRounding.AwayFromZero);
             return rounded.ToString("0.#", CultureInfo.InvariantCulture);
+        }
+
+        // Simple local swing helpers for fallback swing detection
+        private bool IsLocalSwingHigh(int lookback)
+        {
+            if (CurrentBar < lookback) return false;
+            double currentHigh = High[0];
+            for (int i = 1; i <= lookback; i++)
+            {
+                if (High[i] > currentHigh) return false;
+            }
+            return true;
+        }
+
+        private bool IsLocalSwingLow(int lookback)
+        {
+            if (CurrentBar < lookback) return false;
+            double currentLow = Low[0];
+            for (int i = 1; i <= lookback; i++)
+            {
+                if (Low[i] < currentLow) return false;
+            }
+            return true;
         }
 
         #endregion
