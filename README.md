@@ -2,7 +2,7 @@
 
 **Version:** 2.1.0  
 **Status:** In Development  
-**Approach:** 11 independent modules
+**Approach:** 12 independent modules
 
 ---
 
@@ -80,17 +80,18 @@ SMC_indicator/
 
 ## MODULE LIST (SUMMARY)
 
-- **#01 OB Quality:** tính điểm chất lượng OB làm context cho FVG.  
-- **#02 FVG Quality (PRIMARY):** phát hiện và chấm điểm FVG.  
-- **#03 Structure Context:** tag expansion/retracement/continuation.  
-- **#04 Confluence:** kết hợp điểm của các module.  
-- **#05 Stop Placement:** chọn stop tối ưu (FVG edge/full, OB, structure).  
-- **#06 Target Placement:** đặt TP dựa swing/liquidity.  
-- **#07 Market Condition:** phân loại regime (trend/range, vol cao/thấp).  
-- **#08 Volume Divergence:** divergence delta tại swing.  
-- **#09 Volume Profile:** VAH/VAL/POC phục vụ thanh khoản/target.  
-- **#10 MTF Alignment:** kiểm tra đồng pha khung cao.  
-- **#11 Liquidity Map:** map thanh khoản, sweep detection.
+- **#12 FVG Retest Filter (NEW):** l?c/gate FVG retest (edge/shallow/deep/no_touch/break), xu?t `signal_type=fvg_retest_*`.
+- **#01 OB Quality:** t?nh ?i?m ch?t l??ng OB l?m context cho FVG.
+- **#02 FVG Quality (PRIMARY):** ph?t hi?n v? ch?m ?i?m FVG.
+- **#03 Structure Context:** tag expansion/retracement/continuation.
+- **#04 Confluence:** k?t h?p ?i?m c?a c?c module.
+- **#05 Stop Placement:** ch?n stop t?i ?u (FVG edge/full, OB, structure).
+- **#06 Target Placement:** ??t TP d?a swing/liquidity.
+- **#07 Market Condition:** ph?n lo?i regime (trend/range, vol cao/th?p).
+- **#08 Volume Divergence:** divergence delta t?i swing.
+- **#09 Volume Profile:** VAH/VAL/POC ph?c v? thanh kho?n/target.
+- **#10 MTF Alignment:** ki?m tra ??ng pha khung cao.
+- **#11 Liquidity Map:** map thanh kho?n, sweep detection.
 
 ---
 
