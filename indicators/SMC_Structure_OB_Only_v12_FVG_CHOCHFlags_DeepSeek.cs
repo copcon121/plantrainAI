@@ -276,6 +276,16 @@ namespace NinjaTrader.NinjaScript.Indicators
         private int trailUpBar = -1;
         private int trailDnBar = -1;
 
+        // OB and FVG zone lists
+        private List<OBZ> _obZones = new List<OBZ>();
+        private List<FVGZ> _fvgs = new List<FVGZ>();
+
+        // Cumulative delta tracking for FVG detection
+        private double _cumAbsDeltaPct = 0.0;
+        private int _cumCount = 0;
+        private double _cumIsoDeltaPct = 0.0;
+        private double _cumDeltaFar = 0.0;
+
         private class OBZ
         {
             internal bool IsInternal;
@@ -291,8 +301,26 @@ namespace NinjaTrader.NinjaScript.Indicators
             internal bool HitBottom;
         }
 
+        private class FVGZ
+        {
+            internal bool Bull;
+            internal int SourceBar;
+            internal double Top;
+            internal double Bottom;
+            internal int Age;
+            internal bool Removed;
+            internal bool Retested;
+            internal string RectTag;
+            internal string LblTag;
+        }
+
         private NinjaTrader.NinjaScript.Indicators.ATR _atr200;
         private NinjaTrader.NinjaScript.Indicators.ATR _atrDisp;
+
+        // Brushes and Colors
+        private Brush _bullFill, _bearFill, _bullOutline, _bearOutline;
+        private Brush _mitigatedOutline, _invalidOutline, _textBrush;
+        private Brush _fvgBullFill, _fvgBearFill, _fvgBullOutline, _fvgBearOutline, _fvgTextBrush;
         #endregion
 
         #region DeepSeek: pulses & states
@@ -1340,9 +1368,11 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         /// <summary>
         /// Keeps the premium/discount anchors aligned with the latest confirmed external swings.
+        /// Modified (Option 2): Dynamically expands if price breaks current bounds.
         /// </summary>
         private void UpdateTrailingHighLow()
         {
+            // 1. Init/Reset anchors when new swing confirmed
             if (!double.IsNaN(extHighCurr))
             {
                 if (trailUpBar != extHighBar || double.IsNaN(trailUp))
@@ -1367,6 +1397,18 @@ namespace NinjaTrader.NinjaScript.Indicators
             else if (double.IsNaN(trailDn) && !double.IsNaN(extLowLast))
             {
                 trailDn = extLowLast;
+            }
+
+            // 2. Dynamic Expansion
+            // If price breaks current bounds, expand them immediately
+            if (!double.IsNaN(trailUp) && High[0] > trailUp)
+            {
+                trailUp = High[0];
+            }
+
+            if (!double.IsNaN(trailDn) && Low[0] < trailDn)
+            {
+                trailDn = Low[0];
             }
         }
 

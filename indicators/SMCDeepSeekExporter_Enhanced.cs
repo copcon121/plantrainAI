@@ -262,8 +262,9 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             bool obLong = GetSeriesBool(smc.ObExtRetestBull, 0);
             bool obShort = GetSeriesBool(smc.ObExtRetestBear, 0);
-            bool fvgLong = GetSeriesBool(smc.FvgRetestBull, 0);
-            bool fvgShort = GetSeriesBool(smc.FvgRetestBear, 0);
+            // FVG retest removed from C#
+            bool fvgLong = false;
+            bool fvgShort = false;
 
             string signalType = "none";
             if (obLong) signalType = "ob_ext_retest_bull";
@@ -579,11 +580,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             if (buyVol < 0) buyVol = 0.0;
             if (sellVol < 0) sellVol = 0.0;
 
-            AppendProp(sb, "volume", totalVol, false, false); sb.Append(",");
-            AppendProp(sb, "buy_volume", buyVol, false, false); sb.Append(",");
-            AppendProp(sb, "sell_volume", sellVol, false, false); sb.Append(",");
-            AppendProp(sb, "delta", deltaClose, false, false); sb.Append(",");
-            AppendProp(sb, "cumulative_delta", cumDelta, false, false); sb.Append(",");
             AppendProp(sb, "atr_14", GetIndicatorValue(_atr14, 0), false, false);
 
             double entry = Close[0];
@@ -591,8 +587,9 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             double obBullSL = GetSeriesDouble(smc.ObExtRetestBullSL, 0);
             double obBearSL = GetSeriesDouble(smc.ObExtRetestBearSL, 0);
-            double fvgBullSL = GetSeriesDouble(smc.FvgRetestBullSL, 0);
-            double fvgBearSL = GetSeriesDouble(smc.FvgRetestBearSL, 0);
+            // FVG retest SL removed from C#
+            double fvgBullSL = double.NaN;
+            double fvgBearSL = double.NaN;
 
             if (signalType == "ob_ext_retest_bull" && !double.IsNaN(obBullSL))
             {
