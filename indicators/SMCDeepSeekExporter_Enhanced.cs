@@ -644,10 +644,14 @@ namespace NinjaTrader.NinjaScript.Indicators
                     fvgBarIndex = smc.ActiveFvgBarIndex[0];
             }
             bool fvgDetected = fvgDir != 0 && !double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom);
+            // Pulse only when a NEW FVG is created; keep active flag separately
+            bool fvgActive = fvgDetected;
+            bool fvgNew = fvgDetected && fvgBarIndex >= 0 && fvgBarIndex != _lastFvgBarIndex;
             string fvgType = fvgDir == 1 ? "bullish" : (fvgDir == -1 ? "bearish" : "none");
             double fvgGap = (!double.IsNaN(fvgTop) && !double.IsNaN(fvgBottom)) ? Math.Abs(fvgTop - fvgBottom) : double.NaN;
 
-            sb.Append(","); AppendProp(sb, "fvg_detected", fvgDetected, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_detected", fvgNew, false, false);
+            sb.Append(","); AppendProp(sb, "fvg_active", fvgActive, false, false);
             sb.Append(","); AppendPropNullableString(sb, "fvg_type", fvgType, false);
             sb.Append(","); AppendProp(sb, "fvg_top", fvgTop, false, false);
             sb.Append(","); AppendProp(sb, "fvg_bottom", fvgBottom, false, false);
