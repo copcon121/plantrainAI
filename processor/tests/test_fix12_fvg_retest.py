@@ -7,6 +7,8 @@ class TestFVGRetestModule:
 
     def setup_method(self):
         self.module = FVGRetestModule()
+        # For bullish FVG: penetration = (fvg_top - low) / gap
+        # low=100.95 → penetration = (101.0-100.95)/0.5 = 0.1 → "edge" retest
         self.base_bar = {
             "bar_index": 100,
             "fvg_active": True,
@@ -14,9 +16,9 @@ class TestFVGRetestModule:
             "fvg_top": 101.0,
             "fvg_bottom": 100.5,
             "fvg_bar_index": 95,
-            "close": 100.7,
-            "high": 100.8,
-            "low": 100.4,
+            "close": 100.98,
+            "high": 101.2,
+            "low": 100.95,  # Edge penetration into FVG zone
             "atr_14": 0.5,
             "fvg_strength_score": 0.8,
             "ext_bos_up": True,
@@ -36,13 +38,14 @@ class TestFVGRetestModule:
             "fvg_type": "bearish",
             "fvg_top": 100.0,
             "fvg_bottom": 99.5,
-            "high": 100.8,  # break through
+            "high": 100.8,  # break through (high > fvg_top)
             "low": 99.6,
             "ext_bos_down": True,
         }
         result = self.module.process_bar(bar)
         assert result["fvg_retest_detected"] is False
-        assert result["fvg_retest_type"] == "break"
+        # Module returns reason "break_or_filled", type stays "none"
+        assert result["fvg_retest_reason"] == "break_or_filled"
 
     def test_stale_rejected(self):
         bar = {**self.base_bar, "bar_index": 200, "fvg_bar_index": 0}
