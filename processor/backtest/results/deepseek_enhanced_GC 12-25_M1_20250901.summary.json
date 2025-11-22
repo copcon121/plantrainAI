@@ -1,0 +1,10 @@
+{
+  "total": 1221,
+  "fvg_detected_pct": 12.37,
+  "avg_fvg_quality": 0.0634,
+  "avg_confluence": 0.0435,
+  "mtf_data_complete_pct": 99.18,
+  "market_data_complete_pct": 100.0,
+  "liquidity_sweep_pct": 52.25,
+  "divergence_pct": 2.78
+}

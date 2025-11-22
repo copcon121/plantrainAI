@@ -1,0 +1,16 @@
+$src  = "C:\Users\Administrator\Documents\NinjaTrader 8\smc_exports_enhanced"
+$dst  = "processor\backtest\results"
+
+Get-ChildItem $src -Filter "*.jsonl" | ForEach-Object {
+  $name = $_.BaseName
+  python -m processor.backtest.run_module_backtest `
+    --inputs "$($_.FullName)" `
+    --output "$dst\$name.enriched.jsonl" `
+    --summary "$dst\$name.summary.json"
+}
+
+# g?p summary don gi?n (n?u c?n):
+Get-ChildItem $dst -Filter "*.summary.json" |
+  ForEach-Object { Get-Content $_.FullName | ConvertFrom-Json } |
+  ConvertTo-Json -Depth 5 |
+  Set-Content "$dst\all_summaries.json"

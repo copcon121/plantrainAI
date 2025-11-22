@@ -117,3 +117,37 @@ Train  | Train  | Train  | Train  | Test   <- Round 4
 - [ ] REJECTED - Does not improve system
 
 Signed: _____________    Date: ___________
+
+---
+
+## 5) QUICK WORKFLOW (SAU KHI BUILD XONG MODULE)
+
+1. **Export từ Ninja (C# exporter Enhanced)**  
+   - Chạy chart, exporter viết JSONL theo ngày vào `NinjaTrader 8/smc_exports_enhanced` (đã có pulse `fvg_detected`, `fvg_active`, HTF/DI, sweep...).  
+
+2. **Chạy pipeline Python (module #01-#12 đầy đủ)**  
+   - Runner:  
+     `python -m processor.backtest.run_module_backtest --inputs path/to/day.jsonl --output processor/backtest/results/day.enriched.jsonl --summary processor/backtest/results/day.summary.json`  
+   - Kết quả: `.summary.json` (tỷ lệ FVG/sweep…), `.enriched.jsonl` (đủ field stop/target/confluence/mtf/retest...).  
+
+3. **Lọc tín hiệu & tính PF/winrate nhanh**  
+   - Script: `python -m processor.backtest.eval_filtered_signals --inputs processor/backtest/results/*.enriched.jsonl --max-lookahead 50`  
+   - Filter mặc định: FVG Retest edge/shallow, `fvg_retest_quality_score >= 0.6`, `signal_type=fvg_retest_*`, yêu cầu `mtf_is_aligned`; confluence tối thiểu 0 (có thể siết lên 0.08–0.1), market_condition không ràng buộc (có thể giới hạn trend/balanced).  
+   - TP/SL: dùng stop/target nếu có; nếu thiếu, fallback SL = mép FVG, TP = 3R.  
+
+4. **Siết/giãn filter để tối ưu PF**  
+   - Tăng `fvg_retest_quality_score`, `confluence_score`, giới hạn `market_condition`, hoặc nâng lookahead. Rerun script bước 3 để xem PF/winrate thay đổi.  
+
+5. **Lặp lại khi cập nhật code/export**  
+   - Sau khi chỉnh indicator/module, export lại, chạy pipeline (bước 2) rồi đánh giá (bước 3/4).  
+
+> Mục tiêu: PF ≥ 1.5, winrate ~25–35% sau filter; nếu thấp, kiểm tra dữ liệu export (stop/target), ngưỡng filter, hoặc logic module.  
+
+### Quick sanity check trước khi backtest
+- **Pytest toàn bộ (bao gồm module #12):**  
+  `python -m pytest processor/tests -v`  
+  (hoặc chạy riêng test mới: `python -m pytest processor/tests/test_fix12_fvg_retest.py -v`)
+- **Smoke pipeline trên file export mới:**  
+  `python -m processor.tests.test_modules_smoke`  
+  (hoặc đơn giản: `python -m pytest processor/tests/test_modules_smoke.py -v`)  
+  Mục tiêu: không crash, các field chính (fvg/ob/htf/liquidity) không rỗng/0 bất thường.
