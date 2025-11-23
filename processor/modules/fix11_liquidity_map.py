@@ -7,13 +7,14 @@ Tracks liquidity levels and detects sweeps:
 - Swing-based liquidity levels
 - Sweep detection
 """
+import threading
 from typing import Any, Dict, List, Optional
 
 from processor.core.module_base import BaseModule
 
 
 class LiquidityMapModule(BaseModule):
-    """Liquidity Map Module."""
+    """Liquidity Map Module (thread-safe)."""
 
     name = "fix11_liquidity_map"
 
@@ -28,32 +29,34 @@ class LiquidityMapModule(BaseModule):
         self._liquidity_levels: List[Dict[str, Any]] = []
         self._recent_highs: List[Dict[str, Any]] = []
         self._recent_lows: List[Dict[str, Any]] = []
+        self._lock = threading.Lock()
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
     ) -> Dict[str, Any]:
-        """Process bar and update liquidity map."""
+        """Process bar and update liquidity map (thread-safe)."""
         if not self.enabled:
             return bar_state
 
         history = history or []
 
-        # Update swing tracking
-        self._update_swing_tracking(bar_state)
+        with self._lock:
+            # Update swing tracking
+            self._update_swing_tracking(bar_state)
 
-        # Detect equal highs/lows
-        equal_highs = self._detect_equal_levels(self._recent_highs, "high")
-        equal_lows = self._detect_equal_levels(self._recent_lows, "low")
+            # Detect equal highs/lows
+            equal_highs = self._detect_equal_levels(self._recent_highs, "high")
+            equal_lows = self._detect_equal_levels(self._recent_lows, "low")
 
-        # Update liquidity levels
-        self._update_liquidity_levels(equal_highs, equal_lows, bar_state)
+            # Update liquidity levels
+            self._update_liquidity_levels(equal_highs, equal_lows, bar_state)
 
-        # Check for sweep
-        sweep_info = self._detect_sweep(bar_state, history)
+            # Check for sweep
+            sweep_info = self._detect_sweep(bar_state, history)
 
-        # Find nearest liquidity
-        current_price = bar_state.get("close", 0)
-        nearest_info = self._find_nearest_liquidity(current_price)
+            # Find nearest liquidity
+            current_price = bar_state.get("close", 0)
+            nearest_info = self._find_nearest_liquidity(current_price)
 
         # Get from bar_state if available (from Ninja export)
         nearest_liq_high = bar_state.get("nearest_liquidity_high", nearest_info.get("nearest_high", 0))

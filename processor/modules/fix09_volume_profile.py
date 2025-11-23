@@ -7,6 +7,7 @@ Computes session-based volume profile levels:
 - VAL (Value Area Low)
 - POC (Point of Control)
 """
+import threading
 from collections import deque
 from typing import Any, Deque, Dict, List, Optional
 
@@ -14,7 +15,7 @@ from processor.core.module_base import BaseModule
 
 
 class VolumeProfileModule(BaseModule):
-    """Volume Profile Module."""
+    """Volume Profile Module (thread-safe)."""
 
     name = "fix09_volume_profile"
 
@@ -32,26 +33,28 @@ class VolumeProfileModule(BaseModule):
         self._session_data: Deque[Dict[str, Any]] = deque(maxlen=self.config["max_session_bars"])
         self._current_session: Optional[str] = None
         self._last_timestamp: Optional[str] = None
+        self._lock = threading.Lock()
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
     ) -> Dict[str, Any]:
-        """Process bar and calculate volume profile levels."""
+        """Process bar and calculate volume profile levels (thread-safe)."""
         if not self.enabled:
             return bar_state
 
         history = history or []
 
-        # Detect session boundary using multiple methods
-        session_changed = self._detect_session_change(bar_state)
-        if session_changed:
-            self._session_data.clear()  # Reset profile for new session
+        with self._lock:
+            # Detect session boundary using multiple methods
+            session_changed = self._detect_session_change(bar_state)
+            if session_changed:
+                self._session_data.clear()  # Reset profile for new session
 
-        # Accumulate session data
-        self._update_session_data(bar_state)
+            # Accumulate session data
+            self._update_session_data(bar_state)
 
-        # Calculate volume profile
-        vp_info = self._calculate_volume_profile()
+            # Calculate volume profile
+            vp_info = self._calculate_volume_profile()
 
         # Determine price position relative to VP levels
         current_close = bar_state.get("close", 0)

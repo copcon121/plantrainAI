@@ -6,13 +6,14 @@ Goal:
 - Expose the active leg delta so you can gauge buy/sell pressure inside the current move.
 - Keep the last and previous completed legs for quick comparison.
 """
+import threading
 from typing import Any, Dict, List, Optional
 
 from processor.core.module_base import BaseModule
 
 
 class WaveDeltaModule(BaseModule):
-    """Track delta per swing leg using SMC zigzag swings."""
+    """Track delta per swing leg using SMC zigzag swings (thread-safe)."""
 
     name = "fix13_wave_delta"
 
@@ -26,32 +27,34 @@ class WaveDeltaModule(BaseModule):
         self._current_accum = self._new_accum()
         self._wave_history: List[Dict[str, Any]] = []
         self._last_symbol: str | None = None
+        self._lock = threading.Lock()
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
     ) -> Dict[str, Any]:
-        """Accumulate delta along each swing leg and emit wave stats."""
+        """Accumulate delta along each swing leg and emit wave stats (thread-safe)."""
         if not self.enabled:
             return bar_state
 
-        # Reset state on symbol change
-        symbol = bar_state.get("symbol")
-        if symbol and symbol != self._last_symbol:
-            self._reset_state()
-            self._last_symbol = symbol
+        with self._lock:
+            # Reset state on symbol change
+            symbol = bar_state.get("symbol")
+            if symbol and symbol != self._last_symbol:
+                self._reset_state()
+                self._last_symbol = symbol
 
-        # Accumulate into the active leg if we already have an anchor swing
-        self._accumulate_active_leg(bar_state)
+            # Accumulate into the active leg if we already have an anchor swing
+            self._accumulate_active_leg(bar_state)
 
-        wave_completed = None
-        is_swing_high = bool(bar_state.get("is_swing_high", False))
-        is_swing_low = bool(bar_state.get("is_swing_low", False))
+            wave_completed = None
+            is_swing_high = bool(bar_state.get("is_swing_high", False))
+            is_swing_low = bool(bar_state.get("is_swing_low", False))
 
-        if is_swing_high or is_swing_low:
-            swing_type = "high" if is_swing_high else "low"
-            wave_completed = self._handle_swing_anchor(swing_type, bar_state)
+            if is_swing_high or is_swing_low:
+                swing_type = "high" if is_swing_high else "low"
+                wave_completed = self._handle_swing_anchor(swing_type, bar_state)
 
-        outputs = self._build_output(wave_completed)
+            outputs = self._build_output(wave_completed)
         return {**bar_state, **outputs}
 
     # ---- internal helpers -------------------------------------------------
