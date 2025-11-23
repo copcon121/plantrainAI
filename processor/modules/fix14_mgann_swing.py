@@ -1,6 +1,6 @@
 # ============================================================
 # MODULE: FIX14_MGANN_SWING
-# VERSION: v1.0.0
+# VERSION: v1.0.1
 # PROJECT: SMC-AUTO-TRADING-L2
 # AUTHOR: ChatGPT (for lala tr)
 #
@@ -18,7 +18,14 @@
 #       - Wave volume/delta strength
 #       - Internal swing direction
 #
-# TAG: FIX14-MGANN-v1.0.0
+# TAG: FIX14-MGANN-v1.0.1
+#
+# CHANGELOG v1.0.1:
+#   - FIX: push_count now resets when leg direction changes
+#   - FIX: UT requires volume > atr14*20
+#   - FIX: SP requires volume > atr14*20
+#   - FIX: PB requires abs(delta_close) < volume*0.05 and range < atr14*0.4
+#   - FIX: wave_strength returns 0 if leg_volume_sum < 1
 # ============================================================
 
 from processor.core.module_base import BaseModule
@@ -62,51 +69,78 @@ class Fix14MgannSwing(BaseModule):
     def _detect_UT(self, bar_state):
         """
         UpThrust = new high wick + weak delta + close back inside.
+        
+        v1.0.1 criteria:
+        - wick_up > range * 0.4
+        - volume > atr14 * 20
+        - delta_close < 0
         """
         high = bar_state.get("high", 0)
         open_price = bar_state.get("open", 0)
         close = bar_state.get("close", 0)
         delta_close = bar_state.get("delta_close", 0)
         bar_range = bar_state.get("range", 0)
+        volume = bar_state.get("volume", 0)
+        atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
         
         if high > open_price and high > close:
             if delta_close < 0:
                 wick_up = high - max(open_price, close)
-                if wick_up > (bar_range * 0.4):
+                if wick_up > (bar_range * 0.4) and volume > (atr14 * 20):
                     return True
         return False
 
     def _detect_SP(self, bar_state):
         """
         Shakeout = sweep low + strong buy delta + close strong.
+        
+        v1.0.1 criteria:
+        - wick_down > range * 0.4
+        - delta_close > 0
+        - volume > atr14 * 20
         """
         low = bar_state.get("low", 0)
         open_price = bar_state.get("open", 0)
         close = bar_state.get("close", 0)
         delta_close = bar_state.get("delta_close", 0)
         bar_range = bar_state.get("range", 0)
+        volume = bar_state.get("volume", 0)
+        atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
         
         if low < min(open_price, close):
             if delta_close > 0:
                 wick_down = min(open_price, close) - low
-                if wick_down > (bar_range * 0.4):
+                if wick_down > (bar_range * 0.4) and volume > (atr14 * 20):
                     return True
         return False
 
     def _detect_PB(self, bar_state, swing_dir):
         """
         Pullback = shallow retrace + low volume/delta.
+        
+        v1.0.1 criteria:
+        - abs(delta_close) < volume * 0.05 (very weak delta)
+        - range < atr14 * 0.4 (small range)
+        - counter-trend move relative to leg direction
         """
         close = bar_state.get("close", 0)
         open_price = bar_state.get("open", 0)
         delta_close = bar_state.get("delta_close", 0)
         volume = bar_state.get("volume", 1)
+        bar_range = bar_state.get("range", 0)
+        atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
+        
+        # Check range and delta criteria first
+        if abs(delta_close) >= (volume * 0.05):
+            return False
+        if bar_range >= (atr14 * 0.4):
+            return False
         
         if swing_dir == 1:  # up leg
             # small down move + weak selling
-            return close < open_price and abs(delta_close) < (volume * 0.1)
-        else:               # down leg
-            return close > open_price and abs(delta_close) < (volume * 0.1)
+            return close < open_price
+        else:  # down leg
+            return close > open_price
 
 
     # ------------------------------------------------------------
@@ -114,11 +148,17 @@ class Fix14MgannSwing(BaseModule):
     # ------------------------------------------------------------
     def _compute_wave_strength(self, bar_state, leg_delta_sum, leg_volume_sum):
         """
-        Simple scoring v1:
+        Simple scoring v1.0.1:
             40% delta strength
             40% volume strength
             20% body/momentum
+            
+        v1.0.1: Returns 0 if leg_volume_sum < 1 to avoid division errors
         """
+        # Guard: return 0 if no volume
+        if leg_volume_sum < 1:
+            return 0
+        
         delta_score = min(1.0, abs(leg_delta_sum) / (leg_volume_sum + 1e-9))
         atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
         vol_score = min(1.0, leg_volume_sum / (atr14 * 50 + 1e-9))
@@ -162,12 +202,20 @@ class Fix14MgannSwing(BaseModule):
         # Check swing creation
         created_high = False
         created_low = False
+        
+        # Store previous direction to detect changes
+        prev_swing_dir = self.last_swing_dir
 
         # New swing high?
         if self._is_new_swing_high(bar_state, threshold_points):
             self.last_swing_high = bar_state.get("high")
             self.last_swing_dir = 1
             created_high = True
+            
+            # FIX v1.0.1: Reset push_count if direction changed
+            if prev_swing_dir != 1:
+                self.push_count = 0
+            
             self.push_count += 1
 
         # New swing low?
@@ -175,6 +223,11 @@ class Fix14MgannSwing(BaseModule):
             self.last_swing_low = bar_state.get("low")
             self.last_swing_dir = -1
             created_low = True
+            
+            # FIX v1.0.1: Reset push_count if direction changed
+            if prev_swing_dir != -1:
+                self.push_count = 0
+            
             self.push_count += 1
 
         # Pullback detection

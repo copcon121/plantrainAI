@@ -200,11 +200,15 @@ def test_mgann_swing_detects_shakeout():
 
 
 def test_mgann_swing_three_push_exhaustion():
-    """Test 3-push exhaustion detection."""
+    """Test 3-push exhaustion detection.
+    
+    v1.0.1: push_count resets when direction changes, so we manually test the logic.
+    """
     module = Fix14MgannSwing(threshold_ticks=6)
     
     # Manually set push_count to test exhaustion logic
     module.push_count = 3
+    module.last_swing_dir = 1  # Set to uptrend
     
     bar = {
         "bar_index": 1,

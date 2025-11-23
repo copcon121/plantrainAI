@@ -14,14 +14,14 @@
     "mgann_internal_swing_low": 3989.5,
     "mgann_internal_leg_dir": 1,
     "mgann_pb": false,
-    "mgann_ut": true,
+    "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 49,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
-      "UT": true,
+      "UT": false,
       "SP": false,
       "EX3": false
     }
@@ -148,14 +148,14 @@
     "mgann_internal_swing_high": 3990.8,
     "mgann_internal_swing_low": 3989.5,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
     "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 71,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": true,
       "EX3": true
@@ -232,14 +232,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 72,
     "mgann_internal_dir": -1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -256,14 +256,14 @@
     "mgann_internal_swing_high": 3989.6,
     "mgann_internal_swing_low": 3988.1,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": true,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": true,
       "SP": false,
       "EX3": false
@@ -391,14 +391,14 @@
     "mgann_internal_swing_high": 3989.3,
     "mgann_internal_swing_low": 3988.1,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 98,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": true
@@ -475,14 +475,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 91,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -556,14 +556,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 90,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -583,14 +583,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 90,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -637,14 +637,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 99,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -664,14 +664,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 97,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -718,14 +718,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 67,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -742,17 +742,17 @@
     "mgann_internal_swing_high": 3982.5,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 68,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -799,14 +799,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 57,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -823,17 +823,17 @@
     "mgann_internal_swing_high": 3980.6,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 59,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -850,14 +850,14 @@
     "mgann_internal_swing_high": 3979.9,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 96,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -880,14 +880,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 85,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -906,15 +906,15 @@
     "mgann_internal_leg_dir": 1,
     "mgann_pb": false,
     "mgann_ut": false,
-    "mgann_sp": true,
-    "mgann_exhaustion_3push": false,
+    "mgann_sp": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 51,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
-      "SP": true,
-      "EX3": false
+      "SP": false,
+      "EX3": true
     }
   },
   {
@@ -932,14 +932,14 @@
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
     "mgann_pb": false,
-    "mgann_ut": true,
+    "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 58,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
-      "UT": true,
+      "UT": false,
       "SP": false,
       "EX3": false
     }
@@ -961,14 +961,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 62,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -988,14 +988,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1042,14 +1042,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 73,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1069,14 +1069,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 90,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1123,14 +1123,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 81,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1150,14 +1150,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 94,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1174,14 +1174,14 @@
     "mgann_internal_swing_high": 3987.3,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 92,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -1204,14 +1204,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 78,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1231,14 +1231,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 69,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1285,14 +1285,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 78,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1312,14 +1312,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 85,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1364,16 +1364,16 @@
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
     "mgann_pb": false,
-    "mgann_ut": true,
+    "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 52,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
-      "UT": true,
+      "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1393,14 +1393,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 71,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1447,14 +1447,14 @@
     "mgann_pb": false,
     "mgann_ut": true,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": true,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1474,14 +1474,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 53,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1498,14 +1498,14 @@
     "mgann_internal_swing_high": 3984,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 96,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -1528,14 +1528,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 83,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1555,14 +1555,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 68,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": true,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1579,14 +1579,14 @@
     "mgann_internal_swing_high": 3982.4,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": true,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 76,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": true,
       "SP": false,
       "EX3": false
@@ -1606,17 +1606,17 @@
     "mgann_internal_swing_high": 3980.5,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 87,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1636,14 +1636,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1660,14 +1660,14 @@
     "mgann_internal_swing_high": 3982.5,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -1690,14 +1690,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 80,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1717,14 +1717,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1768,17 +1768,17 @@
     "mgann_internal_swing_high": 3980.6,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": true,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1798,14 +1798,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 96,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1852,14 +1852,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1879,14 +1879,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 94,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1933,14 +1933,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 87,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": true,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -1957,17 +1957,17 @@
     "mgann_internal_swing_high": 3997.6,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 92,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -1984,14 +1984,14 @@
     "mgann_internal_swing_high": 3998.1,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -2014,14 +2014,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 92,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2041,14 +2041,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 80,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2095,14 +2095,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 80,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2122,14 +2122,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 87,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2176,14 +2176,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2203,14 +2203,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 91,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2257,14 +2257,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 81,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": true,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2284,14 +2284,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 87,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2338,14 +2338,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": true,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 71,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": true,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2365,14 +2365,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 88,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2419,14 +2419,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 89,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2446,14 +2446,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 97,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2500,14 +2500,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 93,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2524,17 +2524,17 @@
     "mgann_internal_swing_high": 4011.5,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 82,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2578,17 +2578,17 @@
     "mgann_internal_swing_high": 4010.2,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 75,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2605,17 +2605,17 @@
     "mgann_internal_swing_high": 4009.3,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 81,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   },
   {
@@ -2632,14 +2632,14 @@
     "mgann_internal_swing_high": 4010.4,
     "mgann_internal_swing_low": 3972.2,
     "mgann_internal_leg_dir": 1,
-    "mgann_pb": true,
+    "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
     "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 84,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
-      "PB": true,
+      "PB": false,
       "UT": false,
       "SP": false,
       "EX3": false
@@ -2662,14 +2662,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": true,
+    "mgann_exhaustion_3push": false,
     "mgann_wave_strength": 73,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": true
+      "EX3": false
     }
   },
   {
@@ -2689,14 +2689,14 @@
     "mgann_pb": false,
     "mgann_ut": false,
     "mgann_sp": false,
-    "mgann_exhaustion_3push": false,
+    "mgann_exhaustion_3push": true,
     "mgann_wave_strength": 86,
     "mgann_internal_dir": 1,
     "mgann_behavior": {
       "PB": false,
       "UT": false,
       "SP": false,
-      "EX3": false
+      "EX3": true
     }
   }
 ]
