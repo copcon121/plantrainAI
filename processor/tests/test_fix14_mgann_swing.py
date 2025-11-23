@@ -180,16 +180,17 @@ def test_mgann_swing_detects_shakeout():
     module.process_bar(bar1)
     
     # Shakeout bar: low sweep, positive delta, close strong
+    # v1.0.2: Volume must be > ATR*30 = 15, wick > 0.5*range
     bar2 = {
         "bar_index": 2,
         "high": 100.0,
-        "low": 99.0,  # Low sweep
+        "low": 98.5,  # Lower sweep (wick_down = 99.5 - 98.5 = 1.0)
         "open": 99.5,
-        "close": 99.8,  # Close strong
-        "volume": 1000,
+        "close": 99.7,  # Close strong (wick = 1.0, body from 99.5-99.7)
+        "volume": 200,  # v1.0.2: Higher volume (> ATR*30 = 15)
         "delta": 100,
         "delta_close": 100,  # Positive delta
-        "range": 1.0,
+        "range": 1.5,  # range = 100.0 - 98.5 = 1.5, wick_down = 1.0 > 0.5*1.5 = 0.75
         "tick_size": 0.1,
         "atr14": 0.5,
     }

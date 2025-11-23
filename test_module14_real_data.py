@@ -17,14 +17,14 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 
-def load_jsonl_data(filepath, max_bars=100):
+def load_jsonl_data(filepath, max_bars=None):
     """Load data from JSONL file."""
     print(f"📂 Loading data from: {filepath}")
     
     bars = []
     with open(filepath, 'r', encoding='utf-8') as f:
         for i, line in enumerate(f):
-            if i >= max_bars:
+            if max_bars and i >= max_bars:
                 break
             try:
                 bar = json.loads(line.strip())
@@ -44,6 +44,7 @@ def prepare_bar_for_module(bar):
     The JSONL has nested structure:
     - OHLC in bar.bar.{o, h, l, c}
     - Volume/Delta in bar.bar.volume_stats
+    - External swing in bar.bar.{ext_bos_up, ext_choch_up, etc.}
     """
     # Extract nested bar data
     bar_data = bar.get('bar', {})
@@ -66,6 +67,16 @@ def prepare_bar_for_module(bar):
     # ATR from bar.bar.atr_14
     atr = bar_data.get('atr_14', bar.get('atr_14', bar.get('atr14', 0.5)))
     
+    # External swing fields from bar.bar
+    ext_bos_up = bar_data.get('ext_bos_up', False)
+    ext_bos_down = bar_data.get('ext_bos_down', False)
+    ext_choch_up = bar_data.get('ext_choch_up', False)
+    ext_choch_down = bar_data.get('ext_choch_down', False)
+    ext_dir = bar_data.get('ext_dir', 0)
+    
+    # Timestamp from top level
+    timestamp = bar.get('timestamp', bar.get('bar_time', ''))
+    
     prepared = {
         'high': high,
         'low': low,
@@ -77,6 +88,13 @@ def prepare_bar_for_module(bar):
         'range': bar_range,
         'tick_size': 0.1,  # GC tick size
         'atr14': atr,
+        'timestamp': timestamp,
+        # External swing fields for visualizer
+        'ext_bos_up': ext_bos_up,
+        'ext_bos_down': ext_bos_down,
+        'ext_choch_up': ext_choch_up,
+        'ext_choch_down': ext_choch_down,
+        'ext_dir': ext_dir,
     }
     
     return prepared
@@ -198,8 +216,8 @@ def main():
             print("❌ Could not find data file. Please check the path.")
             return
     
-    # Load data
-    bars = load_jsonl_data(data_file, max_bars=100)
+    # Load data - ALL BARS
+    bars = load_jsonl_data(data_file)  # No max_bars limit!
     
     if not bars:
         print("❌ No data loaded!")

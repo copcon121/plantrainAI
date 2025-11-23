@@ -1,6 +1,6 @@
 # ============================================================
 # MODULE: FIX14_MGANN_SWING
-# VERSION: v1.0.1
+# VERSION: v1.0.2
 # PROJECT: SMC-AUTO-TRADING-L2
 # AUTHOR: ChatGPT (for lala tr)
 #
@@ -18,7 +18,13 @@
 #       - Wave volume/delta strength
 #       - Internal swing direction
 #
-# TAG: FIX14-MGANN-v1.0.1
+# TAG: FIX14-MGANN-v1.0.2
+#
+# CHANGELOG v1.0.2:
+#   - REFINED: PB criteria relaxed (range < ATR*0.7, delta < vol*0.15)
+#   - REFINED: UT tightened (volume > ATR*30, wick > 0.5*range)
+#   - REFINED: SP tightened (volume > ATR*30, wick > 0.5*range)
+#   - REFINED: EX3 requires increasing delta/volume + distance > ATR*0.5
 #
 # CHANGELOG v1.0.1:
 #   - FIX: push_count now resets when leg direction changes
@@ -45,6 +51,11 @@ class Fix14MgannSwing(BaseModule):
         self.last_swing_low = None
         self.last_swing_dir = 0   # 1 = up, -1 = down
         self.push_count = 0       # for 3-push exhaustion
+        
+        # v1.0.2: Track push quality for EX3
+        self.push_delta_history = []    # Track delta sums per push
+        self.push_volume_history = []   # Track volume sums per push
+        self.push_distance_history = [] # Track swing distances per push
 
 
     # ------------------------------------------------------------
@@ -70,9 +81,9 @@ class Fix14MgannSwing(BaseModule):
         """
         UpThrust = new high wick + weak delta + close back inside.
         
-        v1.0.1 criteria:
-        - wick_up > range * 0.4
-        - volume > atr14 * 20
+        v1.0.2 criteria (tightened):
+        - wick_up > range * 0.5 (from 0.4)
+        - volume > atr14 * 30 (from 20)
         - delta_close < 0
         """
         high = bar_state.get("high", 0)
@@ -86,7 +97,8 @@ class Fix14MgannSwing(BaseModule):
         if high > open_price and high > close:
             if delta_close < 0:
                 wick_up = high - max(open_price, close)
-                if wick_up > (bar_range * 0.4) and volume > (atr14 * 20):
+                # v1.0.2: Stricter thresholds
+                if wick_up > (bar_range * 0.5) and volume > (atr14 * 30):
                     return True
         return False
 
@@ -94,10 +106,10 @@ class Fix14MgannSwing(BaseModule):
         """
         Shakeout = sweep low + strong buy delta + close strong.
         
-        v1.0.1 criteria:
-        - wick_down > range * 0.4
+        v1.0.2 criteria (tightened):
+        - wick_down > range * 0.5 (from 0.4)
         - delta_close > 0
-        - volume > atr14 * 20
+        - volume > atr14 * 30 (from 20)
         """
         low = bar_state.get("low", 0)
         open_price = bar_state.get("open", 0)
@@ -110,7 +122,8 @@ class Fix14MgannSwing(BaseModule):
         if low < min(open_price, close):
             if delta_close > 0:
                 wick_down = min(open_price, close) - low
-                if wick_down > (bar_range * 0.4) and volume > (atr14 * 20):
+                # v1.0.2: Stricter thresholds
+                if wick_down > (bar_range * 0.5) and volume > (atr14 * 30):
                     return True
         return False
 
@@ -118,9 +131,9 @@ class Fix14MgannSwing(BaseModule):
         """
         Pullback = shallow retrace + low volume/delta.
         
-        v1.0.1 criteria:
-        - abs(delta_close) < volume * 0.05 (very weak delta)
-        - range < atr14 * 0.4 (small range)
+        v1.0.2 criteria (relaxed):
+        - abs(delta_close) < volume * 0.15 (from 0.05)
+        - range < atr14 * 0.7 (from 0.4)
         - counter-trend move relative to leg direction
         """
         close = bar_state.get("close", 0)
@@ -130,10 +143,10 @@ class Fix14MgannSwing(BaseModule):
         bar_range = bar_state.get("range", 0)
         atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
         
-        # Check range and delta criteria first
-        if abs(delta_close) >= (volume * 0.05):
+        # v1.0.2: Relaxed criteria for more PB detections
+        if abs(delta_close) >= (volume * 0.15):
             return False
-        if bar_range >= (atr14 * 0.4):
+        if bar_range >= (atr14 * 0.7):
             return False
         
         if swing_dir == 1:  # up leg
@@ -171,6 +184,33 @@ class Fix14MgannSwing(BaseModule):
 
         return int((delta_score * 0.4 + vol_score * 0.4 + momentum_score * 0.2) * 100)
 
+    def _check_valid_push(self, current_delta, current_volume, current_distance, atr14):
+        """
+        v1.0.2: Validate if current push is a valid continuation.
+        
+        Criteria:
+        - delta_sum increasing compared to previous push
+        - volume_sum increasing compared to previous push
+        - swing_distance > ATR * 0.5
+        """
+        # Check distance first
+        if current_distance < (atr14 * 0.5):
+            return False
+        
+        # If no previous pushes, accept first one with sufficient distance
+        if not self.push_delta_history or not self.push_volume_history:
+            return True
+        
+        # Compare with last push
+        last_delta = abs(self.push_delta_history[-1])
+        last_volume = self.push_volume_history[-1]
+        
+        # Require increasing delta AND volume
+        if abs(current_delta) > last_delta and current_volume > last_volume:
+            return True
+        
+        return False
+
 
     # ------------------------------------------------------------
     # MAIN EXECUTION
@@ -189,6 +229,7 @@ class Fix14MgannSwing(BaseModule):
         """
 
         threshold_points = self.threshold_ticks * bar_state.get("tick_size", 0.1)
+        atr14 = bar_state.get("atr14", bar_state.get("atr_14", 0.5))
 
         # Initialize first swings
         if self.last_swing_high is None and self.last_swing_low is None:
@@ -205,9 +246,15 @@ class Fix14MgannSwing(BaseModule):
         
         # Store previous direction to detect changes
         prev_swing_dir = self.last_swing_dir
+        
+        # Get current bar data for push tracking
+        current_delta = bar_state.get("delta", 0)
+        current_volume = bar_state.get("volume", 0)
 
         # New swing high?
         if self._is_new_swing_high(bar_state, threshold_points):
+            swing_distance = bar_state.get("high") - self.last_swing_low
+            
             self.last_swing_high = bar_state.get("high")
             self.last_swing_dir = 1
             created_high = True
@@ -215,11 +262,27 @@ class Fix14MgannSwing(BaseModule):
             # FIX v1.0.1: Reset push_count if direction changed
             if prev_swing_dir != 1:
                 self.push_count = 0
+                self.push_delta_history = []
+                self.push_volume_history = []
+                self.push_distance_history = []
             
-            self.push_count += 1
+            # v1.0.2: Only increment push_count if valid push
+            if self._check_valid_push(current_delta, current_volume, swing_distance, atr14):
+                self.push_count += 1
+                self.push_delta_history.append(current_delta)
+                self.push_volume_history.append(current_volume)
+                self.push_distance_history.append(swing_distance)
+                
+                # Keep only last 3 pushes in history
+                if len(self.push_delta_history) > 3:
+                    self.push_delta_history = self.push_delta_history[-3:]
+                    self.push_volume_history = self.push_volume_history[-3:]
+                    self.push_distance_history = self.push_distance_history[-3:]
 
         # New swing low?
         elif self._is_new_swing_low(bar_state, threshold_points):
+            swing_distance = self.last_swing_high - bar_state.get("low")
+            
             self.last_swing_low = bar_state.get("low")
             self.last_swing_dir = -1
             created_low = True
@@ -227,8 +290,22 @@ class Fix14MgannSwing(BaseModule):
             # FIX v1.0.1: Reset push_count if direction changed
             if prev_swing_dir != -1:
                 self.push_count = 0
+                self.push_delta_history = []
+                self.push_volume_history = []
+                self.push_distance_history = []
             
-            self.push_count += 1
+            # v1.0.2: Only increment push_count if valid push
+            if self._check_valid_push(current_delta, current_volume, swing_distance, atr14):
+                self.push_count += 1
+                self.push_delta_history.append(current_delta)
+                self.push_volume_history.append(current_volume)
+                self.push_distance_history.append(swing_distance)
+                
+                # Keep only last 3 pushes in history
+                if len(self.push_delta_history) > 3:
+                    self.push_delta_history = self.push_delta_history[-3:]
+                    self.push_volume_history = self.push_volume_history[-3:]
+                    self.push_distance_history = self.push_distance_history[-3:]
 
         # Pullback detection
         pb_flag = self._detect_PB(bar_state, self.last_swing_dir)
@@ -239,6 +316,9 @@ class Fix14MgannSwing(BaseModule):
         # Reset counter after exhaustion is detected
         if exhaustion_flag:
             self.push_count = 0
+            self.push_delta_history = []
+            self.push_volume_history = []
+            self.push_distance_history = []
 
         # Wave strength calc - use simple defaults if accumulation not available
         leg_delta = bar_state.get("delta", 0)
