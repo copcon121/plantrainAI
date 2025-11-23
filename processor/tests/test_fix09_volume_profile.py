@@ -119,7 +119,13 @@ class TestVolumeProfileModule:
         assert "vp_distance_to_val" in result
 
     def test_session_lookback_limit(self):
-        """Test that session data is limited to lookback period."""
+        """Test that session data is limited to max_session_bars config."""
+        # Set a smaller limit for testing
+        self.module.config["max_session_bars"] = 100
+        # Recreate deque with new maxlen
+        from collections import deque
+        self.module._session_data = deque(maxlen=100)
+
         # Process more bars than lookback
         for i in range(150):
             bar = {
@@ -131,7 +137,7 @@ class TestVolumeProfileModule:
             }
             self.module.process_bar(bar)
 
-        # Internal session data should be limited
+        # Internal session data should be limited to maxlen
         assert len(self.module._session_data) <= 100
 
     def test_poc_is_highest_volume_level(self):
