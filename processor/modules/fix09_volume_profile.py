@@ -7,7 +7,8 @@ Computes session-based volume profile levels:
 - VAL (Value Area Low)
 - POC (Point of Control)
 """
-from typing import Any, Dict, List
+from collections import deque
+from typing import Any, Deque, Dict, List, Optional
 
 from processor.core.module_base import BaseModule
 
@@ -23,9 +24,14 @@ class VolumeProfileModule(BaseModule):
             "value_area_pct": 0.70,  # 70% of volume
             "price_bins": 50,  # Number of price bins
             "max_session_bars": 2000,  # Safety cap to prevent memory issues
+            # Session boundary detection settings
+            "session_gap_minutes": 30,  # Gap in minutes to detect new session
+            "use_timestamp_detection": True,  # Use timestamp gaps for session detection
         }
-        self._session_data: List[Dict[str, Any]] = []
-        self._current_session: str | None = None
+        # Use deque for O(1) popleft instead of O(n) list.pop(0)
+        self._session_data: Deque[Dict[str, Any]] = deque(maxlen=self.config["max_session_bars"])
+        self._current_session: Optional[str] = None
+        self._last_timestamp: Optional[str] = None
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
@@ -36,11 +42,10 @@ class VolumeProfileModule(BaseModule):
 
         history = history or []
 
-        # Check for session change
-        current_session = bar_state.get("session", "unknown")
-        if current_session != self._current_session:
-            self._session_data = []  # Reset profile for new session
-            self._current_session = current_session
+        # Detect session boundary using multiple methods
+        session_changed = self._detect_session_change(bar_state)
+        if session_changed:
+            self._session_data.clear()  # Reset profile for new session
 
         # Accumulate session data
         self._update_session_data(bar_state)
@@ -64,6 +69,53 @@ class VolumeProfileModule(BaseModule):
             "vp_distance_to_val": round(position_info["distance_to_val"], 5),
         }
 
+    def _detect_session_change(self, bar_state: Dict[str, Any]) -> bool:
+        """
+        Detect session boundary using multiple methods:
+        1. Explicit session field change
+        2. Timestamp gap detection
+        3. Symbol change
+        """
+        changed = False
+
+        # Method 1: Check explicit session field
+        current_session = bar_state.get("session")
+        if current_session and current_session != self._current_session:
+            self._current_session = current_session
+            changed = True
+
+        # Method 2: Check timestamp gap (if enabled)
+        if self.config["use_timestamp_detection"]:
+            current_ts = bar_state.get("timestamp")
+            if current_ts and self._last_timestamp:
+                gap_minutes = self._calculate_time_gap(self._last_timestamp, current_ts)
+                if gap_minutes is not None and gap_minutes >= self.config["session_gap_minutes"]:
+                    changed = True
+            self._last_timestamp = current_ts
+
+        # Method 3: Check is_session_start flag from NinjaTrader
+        if bar_state.get("is_session_start", False):
+            changed = True
+
+        return changed
+
+    def _calculate_time_gap(self, ts1: str, ts2: str) -> Optional[float]:
+        """Calculate gap in minutes between two timestamps."""
+        try:
+            from datetime import datetime
+
+            # Try common timestamp formats
+            for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S"]:
+                try:
+                    dt1 = datetime.strptime(ts1[:19], fmt[:len(ts1[:19]) + 2])
+                    dt2 = datetime.strptime(ts2[:19], fmt[:len(ts2[:19]) + 2])
+                    return (dt2 - dt1).total_seconds() / 60.0
+                except ValueError:
+                    continue
+            return None
+        except Exception:
+            return None
+
     def _update_session_data(self, bar_state: Dict[str, Any]) -> None:
         """Update session data for volume profile calculation."""
         bar_data = {
@@ -73,11 +125,8 @@ class VolumeProfileModule(BaseModule):
             "volume": bar_state.get("volume", 0),
             "tick_size": bar_state.get("tick_size"),
         }
+        # deque with maxlen automatically handles the cap - O(1) operation
         self._session_data.append(bar_data)
-
-        # Safety cap only (not sliding window)
-        if len(self._session_data) > self.config["max_session_bars"]:
-            self._session_data.pop(0)
 
     def _calculate_volume_profile(self) -> Dict[str, Any]:
         """Calculate VAH, VAL, POC from session data."""
