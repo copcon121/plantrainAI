@@ -24,14 +24,10 @@ class VolumeProfileModule(BaseModule):
         self.config = {
             "value_area_pct": 0.70,  # 70% of volume
             "price_bins": 50,  # Number of price bins
-<<<<<<< HEAD
-            "max_session_bars": 100,  # Sliding window cap to prevent memory issues
-=======
             "max_session_bars": 2000,  # Safety cap to prevent memory issues
             # Session boundary detection settings
             "session_gap_minutes": 30,  # Gap in minutes to detect new session
             "use_timestamp_detection": True,  # Use timestamp gaps for session detection
->>>>>>> cd528ff356a92b92881daa36dfc6753979960225
         }
         # Use deque for O(1) popleft instead of O(n) list.pop(0)
         self._session_data: Deque[Dict[str, Any]] = deque(maxlen=self.config["max_session_bars"])
@@ -135,14 +131,6 @@ class VolumeProfileModule(BaseModule):
         # deque with maxlen automatically handles the cap - O(1) operation
         self._session_data.append(bar_data)
 
-<<<<<<< HEAD
-        # Enforce sliding window cap
-        max_len = max(int(self.config["max_session_bars"]), 1)
-        if len(self._session_data) > max_len:
-            self._session_data = self._session_data[-max_len:]
-
-=======
->>>>>>> cd528ff356a92b92881daa36dfc6753979960225
     def _calculate_volume_profile(self) -> Dict[str, Any]:
         """Calculate VAH, VAL, POC from session data."""
         if len(self._session_data) < 5:

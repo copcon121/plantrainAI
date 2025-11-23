@@ -17,6 +17,7 @@ MODULE_NAMES = [
     "fix11_liquidity_map",
     "fix12_fvg_retest",
     "fix13_wave_delta",
+    "fix14_mgann_swing",
 ]
 
 # Mapping from module file names to actual class names
@@ -34,6 +35,7 @@ CLASS_NAME_MAP = {
     "fix11_liquidity_map": "LiquidityMapModule",
     "fix12_fvg_retest": "FVGRetestModule",
     "fix13_wave_delta": "WaveDeltaModule",
+    "fix14_mgann_swing": "Fix14MgannSwing",
 }
 
 

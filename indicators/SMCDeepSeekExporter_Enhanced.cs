@@ -57,6 +57,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         private string currentDate;
         private string currentFilePath;
         private int _lastFvgBarIndex = -1;
+        private int debugVolStatsPrints = 0;
 
         #region Parameters
 
@@ -266,12 +267,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             bool fvgLong = false;
             bool fvgShort = false;
 
-            string signalType = "none";
-            if (obLong) signalType = "ob_ext_retest_bull";
-            else if (obShort) signalType = "ob_ext_retest_bear";
-            else if (fvgLong) signalType = "fvg_retest_bull";
-            else if (fvgShort) signalType = "fvg_retest_bear";
-
             if (LogRetestSignals && (obLong || obShort || fvgLong || fvgShort))
             {
                 var tags = new List<string>();
@@ -323,23 +318,14 @@ namespace NinjaTrader.NinjaScript.Indicators
                 }
             }
 
-            bool hasLongSignal = obLong || fvgLong;
-            bool hasShortSignal = obShort || fvgShort;
+            // REMOVED: Signal decision logic (OB/FVG retest priority)
+            // The exporter now outputs RAW data only. Downstream Python modules will determine signals.
 
-            string signal = "flat";
-            if (hasLongSignal && !hasShortSignal) signal = "long";
-            else if (hasShortSignal && !hasLongSignal) signal = "short";
-
-            if (OnlySignalBars && signal == "flat")
-                return;
-
-            string jsonLine = BuildJsonLine(signal, signalType, obLong, obShort, fvgLong, fvgShort);
+            string jsonLine = BuildJsonLine(obLong, obShort, fvgLong, fvgShort);
             AppendLineSafe(currentFilePath, jsonLine);
         }
 
         #region Volume Delta Helpers
-
-        private static int debugVolStatsPrints = 0;
 
         private void AppendVolumeStats(StringBuilder sb, int barsAgo)
         {
@@ -538,7 +524,7 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         #region JSON Building
 
-        private string BuildJsonLine(string signal, string signalType, bool obLong, bool obShort, bool fvgLong, bool fvgShort)
+        private string BuildJsonLine(bool obLong, bool obShort, bool fvgLong, bool fvgShort)
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("{");
@@ -550,7 +536,8 @@ namespace NinjaTrader.NinjaScript.Indicators
             AppendProp(sb, "tf", GetTimeframeLabel(), true, true); sb.Append(",");
             AppendProp(sb, "bar_index", CurrentBar, false, false); sb.Append(",");
             AppendProp(sb, "session", GetSessionTag(), true, false); sb.Append(",");
-            AppendProp(sb, "signal", signal, true, false); sb.Append(",");
+            // Removed "signal" field - raw data only
+            AppendProp(sb, "signal", "none", true, false); sb.Append(",");
 
             // Base bar fields (top-level)
             AppendProp(sb, "timestamp", Time[0].ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), true, false); sb.Append(",");
@@ -583,47 +570,14 @@ namespace NinjaTrader.NinjaScript.Indicators
             AppendProp(sb, "atr_14", GetIndicatorValue(_atr14, 0), false, false);
 
             double entry = Close[0];
-            double sl = double.NaN, tp = double.NaN;
-
-            double obBullSL = GetSeriesDouble(smc.ObExtRetestBullSL, 0);
-            double obBearSL = GetSeriesDouble(smc.ObExtRetestBearSL, 0);
-            // FVG retest SL removed from C#
-            double fvgBullSL = double.NaN;
-            double fvgBearSL = double.NaN;
-
-            if (signalType == "ob_ext_retest_bull" && !double.IsNaN(obBullSL))
-            {
-                sl = obBullSL;
-                double risk = entry - sl;
-                if (risk > 0.0) tp = entry + 3.0 * risk;
-            }
-            else if (signalType == "ob_ext_retest_bear" && !double.IsNaN(obBearSL))
-            {
-                sl = obBearSL;
-                double risk = sl - entry;
-                if (risk > 0.0) tp = entry - 3.0 * risk;
-            }
-            else if (signalType == "fvg_retest_bull" && !double.IsNaN(fvgBullSL))
-            {
-                sl = fvgBullSL;
-                double risk = entry - sl;
-                if (risk > 0.0) tp = entry + 3.0 * risk;
-            }
-            else if (signalType == "fvg_retest_bear" && !double.IsNaN(fvgBearSL))
-            {
-                sl = fvgBearSL;
-                double risk = sl - entry;
-                if (risk > 0.0) tp = entry - 3.0 * risk;
-            }
-
-            double slOut = double.IsNaN(sl) ? 0.0 : sl;
-            double tpOut = double.IsNaN(tp) ? 0.0 : tp;
+            // Removed SL/TP calculation logic - this belongs in Python modules
 
             sb.Append(",");
-            AppendProp(sb, "signal_type", signalType, true, false); sb.Append(",");
+            // signal_type is now "raw" or "none"
+            AppendProp(sb, "signal_type", "raw", true, false); sb.Append(",");
             AppendProp(sb, "entry", entry, false, false); sb.Append(",");
-            AppendProp(sb, "sl", slOut, false, false); sb.Append(",");
-            AppendProp(sb, "tp", tpOut, false, false);
+            AppendProp(sb, "sl", 0.0, false, false); sb.Append(",");
+            AppendProp(sb, "tp", 0.0, false, false);
 
             // FVG/OB details (top-level)
             int fvgDir = 0;
@@ -813,13 +767,13 @@ namespace NinjaTrader.NinjaScript.Indicators
             sb.Append(","); AppendPropNullableString(sb, "liquidity_high_type", liquidityHighType, false);
             sb.Append(","); AppendPropNullableString(sb, "liquidity_low_type", liquidityLowType, false);
 
-            // Reason
+            // Reason - now exporting raw event flags
             sb.Append(",\"reason\":[");
             bool firstReason = true;
-            if (obLong) AppendReason(sb, "ob_ext_retest_bull", ref firstReason);
-            if (obShort) AppendReason(sb, "ob_ext_retest_bear", ref firstReason);
-            if (fvgLong) AppendReason(sb, "fvg_retest_bull", ref firstReason);
-            if (fvgShort) AppendReason(sb, "fvg_retest_bear", ref firstReason);
+            if (obLong) AppendReason(sb, "ob_ext_retest_bull_event", ref firstReason);
+            if (obShort) AppendReason(sb, "ob_ext_retest_bear_event", ref firstReason);
+            if (fvgLong) AppendReason(sb, "fvg_retest_bull_event", ref firstReason);
+            if (fvgShort) AppendReason(sb, "fvg_retest_bear_event", ref firstReason);
             sb.Append("]");
 
             // Current bar data (Python script will build context window from sequential bars)

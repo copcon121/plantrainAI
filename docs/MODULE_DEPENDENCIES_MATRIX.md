@@ -22,6 +22,7 @@
 | #10 MTF Alignment | 9 | `htf_*`, `current_trend` | HIGH |
 | #11 Liquidity Map | 14 | `eqh_*`, `eql_*`, `liquidity_*`, `swing_*` | HIGH |
 | #12 FVG Retest Filter | 10 | `fvg_*`, O/H/L/C, `atr_14`, sweep/BOS/CHOCH context | **MUST** (for signal gating) |
+| #14 MGann Swing | 8 | `high`, `low`, `open`, `close`, `delta_close`, `volume`, `tick_size`, `atr_14` | MEDIUM |
 
 ---
 
@@ -353,6 +354,59 @@ Sweep detected when:
 
 ---
 
+### 2.12 Module #14 - MGann Swing Detection
+
+**Purpose:** Internal swing detection with pattern recognition (UpThrust, Shakeout, Pullbacks)
+
+| Field | Type | Description | Usage |
+|-------|------|-------------|-------|
+| `high` | float | Bar high | Swing high detection |
+| `low` | float | Bar low | Swing low detection |
+| `open` | float | Bar open | Pattern detection |
+| `close` | float | Bar close | Pattern detection |
+| `range` | float | high - low | Pattern criteria |
+| `volume` | int | Bar volume | Wave strength |
+| `delta` | int | Buy - sell volume | Wave strength |
+| `delta_close` | int | Delta at close | Pattern detection |
+| `tick_size` | float | Instrument tick size | Threshold calculation |
+| `atr14` / `atr_14` | float | ATR(14) | Wave strength |
+
+**Calculated in Python:**
+- `mgann_internal_swing_high` - Last internal swing high
+- `mgann_internal_swing_low` - Last internal swing low  
+- `mgann_internal_leg_dir` - Current leg direction (1=up, -1=down)
+- `mgann_pb` - Pullback flag
+- `mgann_ut` - UpThrust flag (bearish reversal pattern)
+- `mgann_sp` - Shakeout flag (bullish reversal pattern)
+- `mgann_exhaustion_3push` - 3-push exhaustion flag
+- `mgann_wave_strength` - Wave strength score 0-100
+- `mgann_behavior` - Dict with all pattern flags
+
+**Pattern Detection Logic:**
+
+```python
+# UpThrust: High wick + negative delta + large wick
+UT = (high > max(open, close)) AND (delta_close < 0) AND (upper_wick > 40% range)
+
+# Shakeout: Low wick sweep + positive delta + large wick  
+SP = (low < min(open, close)) AND (delta_close > 0) AND (lower_wick > 40% range)
+
+# Pullback: Counter-trend move + weak delta
+PB_up = (close < open) AND (abs(delta_close) < 10% volume)  # in uptrend
+PB_down = (close > open) AND (abs(delta_close) < 10% volume)  # in downtrend
+```
+
+**Wave Strength Formula:**
+```
+strength = (delta_score * 40%) + (volume_score * 40%) + (momentum_score * 20%)
+where:
+  delta_score = |delta| / volume
+  volume_score = volume / (ATR * 50)
+  momentum_score = |close - open| / range
+```
+
+---
+
 ## 3. FIELD COVERAGE VALIDATION
 
 ### 3.1 Cross-Module Field Usage
@@ -441,3 +495,4 @@ def validate_module_dependencies(bar: dict, module: str) -> list:
 | 1.0 | 2024-11-21 | Initial matrix creation |
 | 1.1 | 2025-11-21 | Added tick_size for VP binning, HTF BOS/CHoCH fields, EQH/EQL touch counts, session_name for market condition, symbol reset for divergence, ATR percentile clarification. |
 | 1.2 | 2025-11-21 | Added Module #12 FVG Retest Filter (inputs/outputs) and pipeline order update. |
+| 1.3 | 2025-11-23 | Added Module #14 MGann Swing Detection with pattern recognition fields and wave strength calculation. |
