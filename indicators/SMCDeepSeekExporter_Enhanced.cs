@@ -1051,12 +1051,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                 AppendProp(sb, "has_active_bull_fvg", smc.M5_HasActiveBullFVG, false, false); sb.Append(",");
                 AppendProp(sb, "has_active_bear_fvg", smc.M5_HasActiveBearFVG, false, false); sb.Append(",");
 
-                // FVG Retest Signals (pulses)
-                AppendProp(sb, "fvg_retest_bull_pulse", smc.M5_FVGRetestBullPulse, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bear_pulse", smc.M5_FVGRetestBearPulse, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bull_sl", smc.M5_FVGRetestBullSL, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bear_sl", smc.M5_FVGRetestBearSL, false, false); sb.Append(",");
-
                 // Premium/Discount Context (persistent - every bar)
                 AppendProp(sb, "in_premium_zone", smc.M5_InPremiumZone, false, false); sb.Append(",");
                 AppendProp(sb, "in_discount_zone", smc.M5_InDiscountZone, false, false); sb.Append(",");
@@ -1103,12 +1097,6 @@ namespace NinjaTrader.NinjaScript.Indicators
                 // FVG States (persistent - every bar)
                 AppendProp(sb, "has_active_bull_fvg", smc.M15_HasActiveBullFVG, false, false); sb.Append(",");
                 AppendProp(sb, "has_active_bear_fvg", smc.M15_HasActiveBearFVG, false, false); sb.Append(",");
-
-                // FVG Retest Signals (pulses)
-                AppendProp(sb, "fvg_retest_bull_pulse", smc.M15_FVGRetestBullPulse, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bear_pulse", smc.M15_FVGRetestBearPulse, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bull_sl", smc.M15_FVGRetestBullSL, false, false); sb.Append(",");
-                AppendProp(sb, "fvg_retest_bear_sl", smc.M15_FVGRetestBearSL, false, false); sb.Append(",");
 
                 // Premium/Discount Context (persistent - every bar)
                 AppendProp(sb, "in_premium_zone", smc.M15_InPremiumZone, false, false); sb.Append(",");

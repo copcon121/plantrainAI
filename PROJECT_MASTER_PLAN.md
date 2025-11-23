@@ -51,6 +51,11 @@
 └── Rollback nhanh nếu có vấn đề
 ```
 
+### New Module: Wave Delta (Fix #13)
+- Scope: cong don delta/volume theo tung leg zigzag (LL->LH/HH, LH->LL/HL) ngay khi bar xac nhan swing den; dung gia swing tu SMC (khong lay high/low bar xac nhan tre).
+- Outputs: `active_wave_delta/volume/bars/direction`, `last_wave_*` (delta/volume/start/end bar+price), `prev_wave_*` de so sanh suc mua/ban giua cac song.
+- Status: In code v1.0 (Layer 2), live accumulation; can cap nhat doc chi tiet module sau.
+
 ---
 
 ## 🚨 VẤN ĐỀ HIỆN TẠI

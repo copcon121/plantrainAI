@@ -6,6 +6,7 @@ This is a lightweight skeleton; plug in real module implementations as ready.
 from typing import Dict, Any, List
 
 from .core.module_base import BaseModule
+from .modules.fix13_wave_delta import WaveDeltaModule
 
 
 class SMCDataProcessor:
@@ -14,8 +15,12 @@ class SMCDataProcessor:
         modules: List[BaseModule] | None = None,
         max_history: int = 2000,
         reset_on_symbol_change: bool = True,
+        enable_wave_delta: bool = True,
     ) -> None:
-        self.modules: List[BaseModule] = modules or []
+        # Copy modules to avoid mutating caller-provided list
+        self.modules: List[BaseModule] = list(modules) if modules else []
+        if enable_wave_delta and not any(isinstance(m, WaveDeltaModule) for m in self.modules):
+            self.modules.append(WaveDeltaModule())
         self.history: List[Dict[str, Any]] = []
         self.max_history = max_history
         self.reset_on_symbol_change = reset_on_symbol_change

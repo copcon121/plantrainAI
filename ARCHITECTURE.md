@@ -1,7 +1,7 @@
-# 🏗️ KIẾN TRÚC HỆ THỐNG SMC - 11 MODULES
+﻿# 🏗️ KIẾN TRÚC HỆ THỐNG SMC - 13 MODULES
 
-**Version:** 2.0.0 (Nov 21, 2025)
-**Major Update:** FVG Quality Module v2.0 với Strength, Retest Geometry, Adaptive Entry
+**Version:** 2.1.0 (Nov 23, 2025)
+**Major Update:** FVG Quality Module v2.0 + Wave Delta (Fix #13)
 
 ---
 
@@ -147,7 +147,7 @@ SMC_indicator/
 │   │   ├── event_state.py                    (EventState class)
 │   │   └── smc_processor.py                  (main processor)
 │   │
-│   ├── modules/                              (11 modules)
+│   ├── modules/                              (13 MODULES)
 │   │   ├── __init__.py
 │   │   ├── fix01_ob_quality.py               (Module 1)
 │   │   ├── fix02_fvg_quality.py              (Module 2)
@@ -547,7 +547,7 @@ ob_strength_score: float     # Score từ Module #1 (nếu có OB)
 ### Phase 1: Setup (Day 1)
 - [ ] Create folder structure
 - [ ] Setup base classes (BarState, EventState)
-- [ ] Create skeleton for 11 modules
+- [ ] Create skeleton for 13 MODULES
 - [ ] Setup testing framework
 
 ### Phase 2: Module Implementation (Days 2-13)
@@ -642,11 +642,11 @@ class Fix01Backtest:
 - [ ] Quick-fill FVGs score lower
 - [ ] Correlation > 0.5
 
-*... tương tự cho 11 modules*
+*... tương tự cho 13 MODULES*
 
 ### Integration Criteria
 
-After all 11 modules:
+After all 13 MODULES:
 - [ ] Overall win rate ≥ 35%
 - [ ] Confluence score (0-100) correlates with success
 - [ ] Scores 80-100: Win rate ≥ 45%
@@ -687,7 +687,7 @@ A: C# trong NinjaTrader bị giới hạn, chạy real-time phải nhẹ. Python
 **Q: Processor chạy real-time hay offline?**
 A: CÓ THỂ cả hai. Export raw → process offline cho ML. Hoặc process real-time nếu cần live trading.
 
-**Q: 11 modules có thể on/off riêng được không?**
+**Q: 13 MODULES có thể on/off riêng được không?**
 A: Có! Mỗi module độc lập, có thể enable/disable để A/B test.
 
 **Q: Backtest từng module để làm gì?**
@@ -710,6 +710,8 @@ A: Validate module đó có improve win rate không. Nếu không → fix hoặc
 | Fix #09: Volume Profile | ✅ Spec Complete | [MODULE_FIX09_VOLUME_PROFILE.md](docs/MODULE_FIX09_VOLUME_PROFILE.md) | VP + VA shift |
 | Fix #10: MTF Alignment | ✅ Spec Complete v1.0 | [MODULE_FIX10_MTF_ALIGNMENT.md](docs/MODULE_FIX10_MTF_ALIGNMENT.md) | Structure + MA trend |
 | Fix #11: Liquidity Map | ✅ Spec Complete | [MODULE_FIX11_LIQUIDITY_MAP.md](docs/MODULE_FIX11_LIQUIDITY_MAP.md) | Sweep detection |
+| Fix #12: FVG Retest Filter | In Code v1.0 | (module only) | Gate edge/shallow/deep/no_touch/break |
+| Fix #13: Wave Delta | In Code v1.0 | (module only) | Live leg delta/volume per zigzag swing |
 
 ### Additional Documentation
 
@@ -731,3 +733,5 @@ A: Validate module đó có improve win rate không. Nếu không → fix hoặc
 3. **NEXT:** Implement NinjaTrader indicator (Layer 1)
 4. **THEN:** Implement Python processor modules (Layer 2)
 5. **FINALLY:** ML Pipeline integration
+
+

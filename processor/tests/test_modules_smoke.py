@@ -15,6 +15,7 @@ MODULE_NAMES = [
     "fix09_volume_profile",
     "fix10_mtf_alignment",
     "fix11_liquidity_map",
+    "fix13_wave_delta",
 ]
 
 # Mapping from module file names to actual class names
@@ -30,6 +31,7 @@ CLASS_NAME_MAP = {
     "fix09_volume_profile": "VolumeProfileModule",
     "fix10_mtf_alignment": "MTFAlignmentModule",
     "fix11_liquidity_map": "LiquidityMapModule",
+    "fix13_wave_delta": "WaveDeltaModule",
 }
 
 
