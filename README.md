@@ -3,11 +3,11 @@
 Single unified flow: NinjaTrader exporter → labeling → LoRA/Qwen training → FastAPI inference. All legacy multi-module plans are retired.
 
 ## System overview
-- **Layer 1 — Exporter:** NinjaTrader indicator emits `event.jsonl` with structure/FVG/MGann fields. See `docs/01_LAYER1_EXPORTER.md`.
-- **Layer 2 — Label Rules (A):** Deterministic rules (Case A+B merged) assign `long/short/skip`. See `docs/02_LAYER2_LABEL_RULES.md`.
-- **Layer 3 — Train Loop:** LoRA on Qwen with oversample + class-weighted focal loss. See `docs/03_LAYER3_TRAIN_LOOP.md`.
-- **Layer 4 — Deploy/Infer:** FastAPI endpoint returning `EnterLong/EnterShort/Skip`. See `docs/04_LAYER4_DEPLOY_INFER.md`.
-- **Unified architecture:** `docs/05_PROJECT_ARCHITECTURE_V3.md`.
+- **Layer 1 — Exporter:** NinjaTrader indicator emits `event.jsonl` with structure/FVG/MGann fields. See `docs/LAYER1_EXPORTER.md`.
+- **Layer 2 — Label Rules (A):** Deterministic rules (Case A+B merged) assign `long/short/skip`. See `docs/LAYER2_Label_Rules_v1.md`.
+- **Layer 3 — Train Loop:** LoRA on Qwen with oversample + class-weighted focal loss. See `docs/LAYER3_TRAIN_LOOP.md`.
+- **Layer 4 — Deploy/Infer:** FastAPI endpoint returning `EnterLong/EnterShort/Skip`. See `docs/LAYER4_DEPLOY_INFER.md`.
+- **Unified architecture:** `docs/Project_Architecture_v3.md`.
 
 ## Folder map (docs-first)
 ```
@@ -16,12 +16,15 @@ ARCHITECTURE.md                 (stack details)
 PROJECT_MASTER_PLAN.md          (plan + milestones)
 PHASE1_INDICATOR_EXPORT_SPEC.md (export contract, Layer 1)
 docs/
-  01_LAYER1_EXPORTER.md
-  02_LAYER2_LABEL_RULES.md
-  03_LAYER3_TRAIN_LOOP.md
-  04_LAYER4_DEPLOY_INFER.md
-  05_PROJECT_ARCHITECTURE_V3.md
-  ... legacy module files now point to v3 docs
+  Project_Architecture_v3.md
+  LAYER1_EXPORTER.md
+  LAYER2_Label_Rules_v1.md
+  LAYER3_TRAIN_LOOP.md
+  LAYER4_DEPLOY_INFER.md
+  SMC_Strategy_Long_v1.md
+  SMC_Strategy_Short_v1.md
+  CTX_V3_Schema.md
+  ... legacy module files now point to the v3 docs above
 ```
 
 ## Quick start
