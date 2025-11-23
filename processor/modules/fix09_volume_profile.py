@@ -11,19 +11,6 @@ from typing import Any, Dict, List
 
 from processor.core.module_base import BaseModule
 
-"""
-Fix #09: Volume Profile.
-Implement per docs/MODULE_FIX09_VOLUME_PROFILE.md.
-
-Computes session-based volume profile levels:
-- VAH (Value Area High)
-- VAL (Value Area Low)
-- POC (Point of Control)
-"""
-from typing import Any, Dict, List
-
-from processor.core.module_base import BaseModule
-
 
 class VolumeProfileModule(BaseModule):
     """Volume Profile Module."""
