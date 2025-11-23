@@ -276,6 +276,16 @@ namespace NinjaTrader.NinjaScript.Indicators
         private int trailUpBar = -1;
         private int trailDnBar = -1;
 
+        // OB and FVG zone lists
+        private List<OBZ> _obZones = new List<OBZ>();
+        private List<FVGZ> _fvgs = new List<FVGZ>();
+
+        // Cumulative delta tracking for FVG detection
+        private double _cumAbsDeltaPct = 0.0;
+        private int _cumCount = 0;
+        private double _cumIsoDeltaPct = 0.0;
+        private double _cumDeltaFar = 0.0;
+
         private class OBZ
         {
             internal bool IsInternal;
@@ -291,8 +301,25 @@ namespace NinjaTrader.NinjaScript.Indicators
             internal bool HitBottom;
         }
 
+        private class FVGZ
+        {
+            internal bool Bull;
+            internal int SourceBar;
+            internal double Top;
+            internal double Bottom;
+            internal int Age;
+            internal bool Removed;
+            internal string RectTag;
+            internal string LblTag;
+        }
+
         private NinjaTrader.NinjaScript.Indicators.ATR _atr200;
         private NinjaTrader.NinjaScript.Indicators.ATR _atrDisp;
+
+        // Brushes and Colors
+        private Brush _bullFill, _bearFill, _bullOutline, _bearOutline;
+        private Brush _mitigatedOutline, _invalidOutline, _textBrush;
+        private Brush _fvgBullFill, _fvgBearFill, _fvgBullOutline, _fvgBearOutline, _fvgTextBrush;
         #endregion
 
         #region DeepSeek: pulses & states
@@ -409,12 +436,6 @@ namespace NinjaTrader.NinjaScript.Indicators
 
             // FVG tracking
             public List<FVGZ> FVGs = new List<FVGZ>();
-
-            // FVG Retest signals (pulses)
-            public bool FVGRetestBullPulse = false;
-            public bool FVGRetestBearPulse = false;
-            public double FVGRetestBullSL = double.NaN;
-            public double FVGRetestBearSL = double.NaN;
 
             // FVG Context (persistent states)
             public bool HasActiveFvgBull = false;
@@ -780,10 +801,6 @@ namespace NinjaTrader.NinjaScript.Indicators
             data.OBRetestBearPulse = false;
             data.OBRetestBullSL = double.NaN;
             data.OBRetestBearSL = double.NaN;
-            data.FVGRetestBullPulse = false;
-            data.FVGRetestBearPulse = false;
-            data.FVGRetestBullSL = double.NaN;
-            data.FVGRetestBearSL = double.NaN;
         }
 
         private void UpdateStructure_MTF(int bip, MTFStructureData data, int win, ISeries<double> highs, ISeries<double> lows)
@@ -1082,8 +1099,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                 Bottom = isBullFVG ? highs[2] : highs[0],
                 Removed = false,
                 RectTag = "MTFFVG_" + (isBullFVG ? "B" : "S") + "_" + bip + "_" + (currentBar - 1),
-                LblTag = "MTFFVGL_" + (isBullFVG ? "B" : "S") + "_" + bip + "_" + (currentBar - 1),
-                Retested = false
+                LblTag = "MTFFVGL_" + (isBullFVG ? "B" : "S") + "_" + bip + "_" + (currentBar - 1)
             };
             data.FVGs.Add(fvg);
         }
@@ -1104,30 +1120,21 @@ namespace NinjaTrader.NinjaScript.Indicators
                     continue;
                 }
 
-                // Check retest
-                if (!z.Retested)
-                {
-                    bool filled = false;
-                    if (z.Bull && lows[0] <= z.Top)
-                    {
-                        filled = true;
-                        z.Retested = true;
-                        data.FVGRetestBullPulse = true;
-                        data.FVGRetestBullSL = z.Bottom;
-                    }
-                    else if (!z.Bull && highs[0] >= z.Bottom)
-                    {
-                        filled = true;
-                        z.Retested = true;
-                        data.FVGRetestBearPulse = true;
-                        data.FVGRetestBearSL = z.Top;
-                    }
+                // Track active FVG state (not filled)
+                bool filled = false;
+                if (z.Bull && lows[0] <= z.Bottom)
+                    filled = true;
+                else if (!z.Bull && highs[0] >= z.Top)
+                    filled = true;
 
-                    if (!filled)
-                    {
-                        if (z.Bull) data.HasActiveFvgBull = true;
-                        else data.HasActiveFvgBear = true;
-                    }
+                if (!filled)
+                {
+                    if (z.Bull) data.HasActiveFvgBull = true;
+                    else data.HasActiveFvgBear = true;
+                }
+                else
+                {
+                    z.Removed = true;
                 }
             }
 
@@ -1340,9 +1347,11 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         /// <summary>
         /// Keeps the premium/discount anchors aligned with the latest confirmed external swings.
+        /// Modified (Option 2): Dynamically expands if price breaks current bounds.
         /// </summary>
         private void UpdateTrailingHighLow()
         {
+            // 1. Init/Reset anchors when new swing confirmed
             if (!double.IsNaN(extHighCurr))
             {
                 if (trailUpBar != extHighBar || double.IsNaN(trailUp))
@@ -1367,6 +1376,18 @@ namespace NinjaTrader.NinjaScript.Indicators
             else if (double.IsNaN(trailDn) && !double.IsNaN(extLowLast))
             {
                 trailDn = extLowLast;
+            }
+
+            // 2. Dynamic Expansion
+            // If price breaks current bounds, expand them immediately
+            if (!double.IsNaN(trailUp) && High[0] > trailUp)
+            {
+                trailUp = High[0];
+            }
+
+            if (!double.IsNaN(trailDn) && Low[0] < trailDn)
+            {
+                trailDn = Low[0];
             }
         }
 
@@ -2499,18 +2520,7 @@ namespace NinjaTrader.NinjaScript.Indicators
         [Browsable(false), XmlIgnore]
         public bool M5_HasActiveBearFVG { get { return _m5Data != null && _m5Data.HasActiveFvgBear; } }
 
-        // FVG Retest Pulses (one-time signals)
-        [Browsable(false), XmlIgnore]
-        public bool M5_FVGRetestBullPulse { get { return _m5Data != null && _m5Data.FVGRetestBullPulse; } }
 
-        [Browsable(false), XmlIgnore]
-        public bool M5_FVGRetestBearPulse { get { return _m5Data != null && _m5Data.FVGRetestBearPulse; } }
-
-        [Browsable(false), XmlIgnore]
-        public double M5_FVGRetestBullSL { get { return _m5Data != null ? _m5Data.FVGRetestBullSL : double.NaN; } }
-
-        [Browsable(false), XmlIgnore]
-        public double M5_FVGRetestBearSL { get { return _m5Data != null ? _m5Data.FVGRetestBearSL : double.NaN; } }
 
         // M5 exports mapped to primary bars (for exporter/ML on lower TF charts)
         [Browsable(false), XmlIgnore]
@@ -2590,19 +2600,6 @@ namespace NinjaTrader.NinjaScript.Indicators
 
         [Browsable(false), XmlIgnore]
         public bool M15_HasActiveBearFVG { get { return _m15Data != null && _m15Data.HasActiveFvgBear; } }
-
-        // FVG Retest Pulses (one-time signals)
-        [Browsable(false), XmlIgnore]
-        public bool M15_FVGRetestBullPulse { get { return _m15Data != null && _m15Data.FVGRetestBullPulse; } }
-
-        [Browsable(false), XmlIgnore]
-        public bool M15_FVGRetestBearPulse { get { return _m15Data != null && _m15Data.FVGRetestBearPulse; } }
-
-        [Browsable(false), XmlIgnore]
-        public double M15_FVGRetestBullSL { get { return _m15Data != null ? _m15Data.FVGRetestBullSL : double.NaN; } }
-
-        [Browsable(false), XmlIgnore]
-        public double M15_FVGRetestBearSL { get { return _m15Data != null ? _m15Data.FVGRetestBearSL : double.NaN; } }
 
         // Premium/Discount Context (persistent - every bar)
         [Browsable(false), XmlIgnore]

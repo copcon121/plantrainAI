@@ -2,7 +2,7 @@
 
 **Version:** 2.1.0  
 **Status:** In Development  
-**Approach:** 12 independent modules
+**Approach:** 13 independent modules
 
 ---
 
@@ -92,6 +92,7 @@ SMC_indicator/
 - **#10 MTF Alignment:** ki?m tra ??ng pha khung cao.
 - **#11 Liquidity Map:** map thanh kho?n, sweep detection.
 - **#12 FVG Retest Filter (NEW):** l?c/gate FVG retest (edge/shallow/deep/no_touch/break), xu?t `signal_type=fvg_retest_*`.
+- **#13 Wave Delta (NEW):** cong don delta/volume cho tung leg zigzag (LL->LH/HH, LH->LL/HL), phuc vu so sanh suc mua/ban giua cac song va feed confluence.
 
 ---
 
@@ -108,7 +109,8 @@ SMC_indicator/
 9) Stop Placement (#05)  
 10) Target Placement (#06)  
 11) Volume Divergence (#08)  
-12) Confluence (#04)
+12) Wave Delta (#13)  
+13) Confluence (#04)
 
 Backtest runner `python -m processor.backtest.run_module_backtest` dùng thứ tự trên (đã cập nhật).
 

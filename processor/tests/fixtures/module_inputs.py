@@ -97,3 +97,10 @@ MODULE_FIX11 = {
     "liquidity_high_type": "swing",
     "liquidity_low_type": "equal_lows",
 }
+
+MODULE_FIX13 = {
+    **BASE_BAR,
+    "is_swing_low": True,
+    "last_swing_low": 99.00,
+    "low": 100.00,
+}
