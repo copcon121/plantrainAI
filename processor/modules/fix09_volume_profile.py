@@ -35,7 +35,7 @@ class VolumeProfileModule(BaseModule):
         self.config = {
             "value_area_pct": 0.70,  # 70% of volume
             "price_bins": 50,  # Number of price bins
-            "max_session_bars": 2000,  # Safety cap to prevent memory issues
+            "max_session_bars": 100,  # Sliding window cap to prevent memory issues
         }
         self._session_data: List[Dict[str, Any]] = []
         self._current_session: str | None = None
@@ -88,9 +88,10 @@ class VolumeProfileModule(BaseModule):
         }
         self._session_data.append(bar_data)
 
-        # Safety cap only (not sliding window)
-        if len(self._session_data) > self.config["max_session_bars"]:
-            self._session_data.pop(0)
+        # Enforce sliding window cap
+        max_len = max(int(self.config["max_session_bars"]), 1)
+        if len(self._session_data) > max_len:
+            self._session_data = self._session_data[-max_len:]
 
     def _calculate_volume_profile(self) -> Dict[str, Any]:
         """Calculate VAH, VAL, POC from session data."""
