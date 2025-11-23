@@ -4,14 +4,25 @@ Each module receives BarState (dict-like) and returns an updated dict.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+
+class ValidationError(Exception):
+    """Raised when bar_state validation fails."""
+
+    pass
 
 
 class BaseModule(ABC):
     name: str = "base_module"
 
+    # Override in subclass to define required fields for validation
+    required_fields: Set[str] = set()
+
     @abstractmethod
-    def process_bar(self, bar_state: Dict[str, Any], history: list | None = None) -> Dict[str, Any]:
+    def process_bar(
+        self, bar_state: Dict[str, Any], history: list | None = None
+    ) -> Dict[str, Any]:
         """
         Process a single bar.
 
