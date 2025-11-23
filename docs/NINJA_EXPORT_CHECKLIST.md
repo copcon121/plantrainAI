@@ -1,8 +1,11 @@
 # NINJA EXPORT CHECKLIST
 
-## VERSION: 1.2
+## VERSION: 1.3
 ## PURPOSE: Comprehensive list of all fields required from NinjaTrader for all modules
-## LAST UPDATED: November 21, 2025
+## LAST UPDATED: November 23, 2025
+
+**Changelog (v1.3):**
+- Removed FVG retest pulses from Ninja export (logic now in Python Fix #12); only OB retest signals remain in `SMCDeepSeekExporter_Enhanced`.
 
 ---
 
