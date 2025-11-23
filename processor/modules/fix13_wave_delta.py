@@ -6,13 +6,14 @@ Goal:
 - Expose the active leg delta so you can gauge buy/sell pressure inside the current move.
 - Keep the last and previous completed legs for quick comparison.
 """
+import threading
 from typing import Any, Dict, List, Optional
 
 from processor.core.module_base import BaseModule
 
 
 class WaveDeltaModule(BaseModule):
-    """Track delta per swing leg using SMC zigzag swings."""
+    """Track delta per swing leg using SMC zigzag swings (thread-safe)."""
 
     name = "fix13_wave_delta"
 
@@ -26,32 +27,34 @@ class WaveDeltaModule(BaseModule):
         self._current_accum = self._new_accum()
         self._wave_history: List[Dict[str, Any]] = []
         self._last_symbol: str | None = None
+        self._lock = threading.Lock()
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
     ) -> Dict[str, Any]:
-        """Accumulate delta along each swing leg and emit wave stats."""
+        """Accumulate delta along each swing leg and emit wave stats (thread-safe)."""
         if not self.enabled:
             return bar_state
 
-        # Reset state on symbol change
-        symbol = bar_state.get("symbol")
-        if symbol and symbol != self._last_symbol:
-            self._reset_state()
-            self._last_symbol = symbol
+        with self._lock:
+            # Reset state on symbol change
+            symbol = bar_state.get("symbol")
+            if symbol and symbol != self._last_symbol:
+                self._reset_state()
+                self._last_symbol = symbol
 
-        # Accumulate into the active leg if we already have an anchor swing
-        self._accumulate_active_leg(bar_state)
+            # Accumulate into the active leg if we already have an anchor swing
+            self._accumulate_active_leg(bar_state)
 
-        wave_completed = None
-        is_swing_high = bool(bar_state.get("is_swing_high", False))
-        is_swing_low = bool(bar_state.get("is_swing_low", False))
+            wave_completed = None
+            is_swing_high = bool(bar_state.get("is_swing_high", False))
+            is_swing_low = bool(bar_state.get("is_swing_low", False))
 
-        if is_swing_high or is_swing_low:
-            swing_type = "high" if is_swing_high else "low"
-            wave_completed = self._handle_swing_anchor(swing_type, bar_state)
+            if is_swing_high or is_swing_low:
+                swing_type = "high" if is_swing_high else "low"
+                wave_completed = self._handle_swing_anchor(swing_type, bar_state)
 
-        outputs = self._build_output(wave_completed)
+            outputs = self._build_output(wave_completed)
         return {**bar_state, **outputs}
 
     # ---- internal helpers -------------------------------------------------
@@ -138,23 +141,23 @@ class WaveDeltaModule(BaseModule):
             "active_wave_direction": active_dir,
             "active_wave_bars": self._current_accum["bars"],
             "active_wave_volume": round(self._current_accum["volume"], 3),
-        # Last completed leg
-        "last_wave_delta": round(last_wave["delta"], 3) if last_wave else 0.0,
-        "last_wave_direction": last_wave["direction"] if last_wave else 0,
-        "last_wave_bars": last_wave["bars"] if last_wave else 0,
-        "last_wave_volume": round(last_wave["volume"], 3) if last_wave else 0.0,
-        "last_wave_buy_volume": round(last_wave["buy_volume"], 3) if last_wave else 0.0,
-        "last_wave_sell_volume": round(last_wave["sell_volume"], 3) if last_wave else 0.0,
-        "last_wave_start_bar": last_wave["start_bar"] if last_wave else -1,
-        "last_wave_end_bar": last_wave["end_bar"] if last_wave else -1,
-        "last_wave_start_price": last_wave.get("start_price") if last_wave else None,
-        "last_wave_end_price": last_wave.get("end_price") if last_wave else None,
-        # Previous leg (for quick comparison)
-        "prev_wave_delta": round(prev_wave["delta"], 3) if prev_wave else 0.0,
-        "prev_wave_direction": prev_wave["direction"] if prev_wave else 0,
-        "prev_wave_end_price": prev_wave.get("end_price") if prev_wave else None,
-        "wave_history_count": len(self._wave_history),
-    }
+            # Last completed leg
+            "last_wave_delta": round(last_wave["delta"], 3) if last_wave else 0.0,
+            "last_wave_direction": last_wave["direction"] if last_wave else 0,
+            "last_wave_bars": last_wave["bars"] if last_wave else 0,
+            "last_wave_volume": round(last_wave["volume"], 3) if last_wave else 0.0,
+            "last_wave_buy_volume": round(last_wave["buy_volume"], 3) if last_wave else 0.0,
+            "last_wave_sell_volume": round(last_wave["sell_volume"], 3) if last_wave else 0.0,
+            "last_wave_start_bar": last_wave["start_bar"] if last_wave else -1,
+            "last_wave_end_bar": last_wave["end_bar"] if last_wave else -1,
+            "last_wave_start_price": last_wave.get("start_price") if last_wave else None,
+            "last_wave_end_price": last_wave.get("end_price") if last_wave else None,
+            # Previous leg (for quick comparison)
+            "prev_wave_delta": round(prev_wave["delta"], 3) if prev_wave else 0.0,
+            "prev_wave_direction": prev_wave["direction"] if prev_wave else 0,
+            "prev_wave_end_price": prev_wave.get("end_price") if prev_wave else None,
+            "wave_history_count": len(self._wave_history),
+        }
 
     def _get_swing_price(self, swing_type: str, bar_state: Dict[str, Any]) -> Any:
         """

@@ -15,6 +15,7 @@ MODULE_NAMES = [
     "fix09_volume_profile",
     "fix10_mtf_alignment",
     "fix11_liquidity_map",
+    "fix12_fvg_retest",
     "fix13_wave_delta",
 ]
 
@@ -31,6 +32,7 @@ CLASS_NAME_MAP = {
     "fix09_volume_profile": "VolumeProfileModule",
     "fix10_mtf_alignment": "MTFAlignmentModule",
     "fix11_liquidity_map": "LiquidityMapModule",
+    "fix12_fvg_retest": "FVGRetestModule",
     "fix13_wave_delta": "WaveDeltaModule",
 }
 
