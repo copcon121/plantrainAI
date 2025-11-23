@@ -6,13 +6,14 @@ Detects price/delta divergence at swings:
 - Bullish divergence: Lower price low, higher delta
 - Bearish divergence: Higher price high, lower delta
 """
+import threading
 from typing import Any, Dict, List, Optional
 
 from processor.core.module_base import BaseModule
 
 
 class VolumeDivergenceModule(BaseModule):
-    """Volume/Delta Divergence Detection Module."""
+    """Volume/Delta Divergence Detection Module (thread-safe)."""
 
     name = "fix08_volume_divergence"
 
@@ -26,23 +27,25 @@ class VolumeDivergenceModule(BaseModule):
         }
         self._swing_history: List[Dict[str, Any]] = []
         self._last_symbol: str | None = None
+        self._lock = threading.Lock()
 
     def process_bar(
         self, bar_state: Dict[str, Any], history: List[Dict[str, Any]] | None = None
     ) -> Dict[str, Any]:
-        """Process bar and detect divergence."""
+        """Process bar and detect divergence (thread-safe)."""
         if not self.enabled:
             return bar_state
 
         history = history or []
 
-        self._maybe_reset(bar_state)
+        with self._lock:
+            self._maybe_reset(bar_state)
 
-        # Update swing history if current bar is a swing
-        self._update_swing_history(bar_state, history)
+            # Update swing history if current bar is a swing
+            self._update_swing_history(bar_state, history)
 
-        # Detect divergence
-        divergence_info = self._detect_divergence(bar_state, history)
+            # Detect divergence
+            divergence_info = self._detect_divergence(bar_state, history)
 
         return {
             **bar_state,

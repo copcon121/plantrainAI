@@ -25,6 +25,14 @@ class OBQualityModule(BaseModule):
             "max_ob_age_bars": 30,
             "require_sweep": True,
             "require_flip_flag": False,  # allows enforcement if indicator supplies ob_flip_valid
+            # Scoring weights (must sum to 1.0)
+            "weight_displacement": 0.4,
+            "weight_volume": 0.3,
+            "weight_delta": 0.2,
+            "weight_sweep": 0.1,
+            # Liquidity sweep detection
+            "sweep_lookback_bars": 10,  # bars to look back for swing high/low before OB
+            "sweep_min_bars": 3,  # minimum bars needed for sweep detection
         }
 
     def process_bar(
@@ -67,12 +75,12 @@ class OBQualityModule(BaseModule):
             bar_state.get("ob_direction", "bull"),
         )
 
-        # Final weighted score
+        # Final weighted score using configurable weights
         ob_strength_score = (
-            0.4 * displacement_score
-            + 0.3 * volume_score
-            + 0.2 * delta_imbalance
-            + 0.1 * (1.0 if liquidity_sweep else 0.0)
+            self.config["weight_displacement"] * displacement_score
+            + self.config["weight_volume"] * volume_score
+            + self.config["weight_delta"] * delta_imbalance
+            + self.config["weight_sweep"] * (1.0 if liquidity_sweep else 0.0)
         )
 
         return {
@@ -197,12 +205,15 @@ class OBQualityModule(BaseModule):
         self, bars: List[Dict[str, Any]], ob_index: int, direction: str
     ) -> bool:
         """Detect if OB formed after liquidity sweep."""
-        if ob_index < 5 or ob_index >= len(bars):
+        lookback = self.config["sweep_lookback_bars"]
+        min_bars = self.config["sweep_min_bars"]
+
+        if ob_index < min_bars or ob_index >= len(bars):
             return False
 
-        # Get recent swing high/low before OB
-        lookback_bars = bars[max(0, ob_index - 5) : ob_index]
-        if not lookback_bars:
+        # Get recent swing high/low before OB with configurable lookback
+        lookback_bars = bars[max(0, ob_index - lookback) : ob_index]
+        if len(lookback_bars) < min_bars:
             return False
 
         recent_swing_high = max(b.get("high", 0) for b in lookback_bars)

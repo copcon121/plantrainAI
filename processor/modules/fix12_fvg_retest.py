@@ -38,9 +38,8 @@ class FVGRetestModule(BaseModule):
             return bar_state
 
         history = history or []
-        # attach history for context lookup in reversal checks (not serialized)
-        bar_state["_history"] = history
-        base_state = {k: v for k, v in bar_state.items() if k != "_history"}
+        # Don't mutate bar_state - pass history separately to avoid serialization issues
+        base_state = dict(bar_state)
 
         # Require active FVG zone
         fvg_active = bar_state.get("fvg_active", False) or bar_state.get(
@@ -81,7 +80,7 @@ class FVGRetestModule(BaseModule):
             return {**base_state, **self._default_output("break_or_filled")}
 
         # Context triggers (must have at least one)
-        context_ok = self._has_reversal_context(fvg_type, bar_state)
+        context_ok = self._has_reversal_context(fvg_type, bar_state, history)
         if not context_ok:
             return {**base_state, **self._default_output("no_context")}
 
@@ -176,11 +175,18 @@ class FVGRetestModule(BaseModule):
             return max(0.2, 0.8 - penetration_pct)
         return 0.0
 
-    def _has_reversal_context(self, fvg_type: str, bar_state: Dict[str, Any]) -> bool:
+    def _has_reversal_context(
+        self, fvg_type: str, bar_state: Dict[str, Any], history: List[Dict[str, Any]]
+    ) -> bool:
         """
         Require recent BOS/CHoCH on M1 as a stop-run/flip before the FVG forms.
         For bullish retest: look for bearish BOS/CHoCH recently (liquidity grab down, then FVG up).
         For bearish retest: look for bullish BOS/CHoCH recently (liquidity grab up, then FVG down).
+
+        Args:
+            fvg_type: "bullish" or "bearish"
+            bar_state: Current bar data
+            history: Historical bars (passed separately to avoid mutating bar_state)
         """
         is_bull = fvg_type == "bullish"
 
@@ -197,8 +203,7 @@ class FVGRetestModule(BaseModule):
             return True
 
         # Look back a short window for recent structure break
-        if self.config["require_structure_context"]:
-            history: List[Dict[str, Any]] = bar_state.get("_history", [])
+        if self.config["require_structure_context"] and history:
             for rec in reversed(history[-self.config["structure_lookback"] :]):
                 if is_bull and (_get_flag(rec, "ext_bos_down") or _get_flag(rec, "ext_choch_down")):
                     return True
