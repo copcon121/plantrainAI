@@ -47,6 +47,8 @@ Canonical spec for the NinjaTrader exporter indicator that feeds the v3 Auto-Tra
 - `mgann_leg_first_fvg`: True only for the first FVG printed in a leg; resets on leg change.
 - `pb_wave_strength_ok`: Boolean gate indicating the pullback wave is healthy enough to trade (e.g., delta/volume alignment and depth constraints).
 
+> **Computation origin:** All three fields are **computed upstream by Module 14 (MGannSwing Engine)**. The exporter only reads the pre-computed values from the indicator state and writes them into `event.jsonl`; do not re-implement the pullback-strength logic or leg counting inside Layer 1.
+
 ## Leg/FVG Scenarios
 - **Leg1 creates FVG:** `mgann_leg_index = 1`, `mgann_leg_first_fvg = true`. Treated as reclaim confirmation immediately after CHoCH/BOS.
 - **Leg2 creates first FVG of the leg:** `mgann_leg_index = 2`, `mgann_leg_first_fvg = true`. This is the default continuation entry window.

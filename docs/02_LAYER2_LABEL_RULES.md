@@ -5,7 +5,8 @@ Single source of truth for labeling logic. Only one rule set is allowed (Case A 
 ## Canonical long/short rules
 
 **LONG (Case A+B merged, mandatory):**
-- `ext_choch_down = true`
+- HTF bias (M5): `ext_bos_up = true` **or** `ext_choch_up = true`
+- LTF execution (M1): `ext_choch_down = true`
 - `fvg_up = true`
 - `fvg_retest = true`
 - `ext_dir = 1`
@@ -15,7 +16,8 @@ Single source of truth for labeling logic. Only one rule set is allowed (Case A 
 - => `label = "long"`
 
 **SHORT (mirror):**
-- `ext_choch_up = true`
+- HTF bias (M5): `ext_bos_down = true` **or** `ext_choch_down = true`
+- LTF execution (M1): `ext_choch_up = true`
 - `fvg_down = true`
 - `fvg_retest = true`
 - `ext_dir = -1`
@@ -27,8 +29,8 @@ Single source of truth for labeling logic. Only one rule set is allowed (Case A 
 If any required condition fails, set `label = "skip"`. No other rule branches are permitted.
 
 ## Flow narrative (CHOCH → Reclaim → MGann Leg → FVG → Retest)
-1) **CHOCH/Reclaim**: External CHoCH triggers structure shift (`ext_choch_down` for long, `ext_choch_up` for short). Reset `mgann_leg_index` to 1.
-2) **Reclaim / Direction lock**: `ext_dir` aligns with reclaimed side (1 for bullish reclaim, -1 for bearish).
+1) **HTF bias (M5)**: `ext_bos_up/ext_choch_up` (long bias) or `ext_bos_down/ext_choch_down` (short bias) set the directional context and reset `mgann_leg_index` to 1.
+2) **Reclaim / Direction lock (M1)**: `ext_dir` aligns with reclaimed side (1 for bullish reclaim, -1 for bearish).
 3) **MGann Leg assessment**: `mgann_leg_index` counts legs after reclaim. Only leg 1 and 2 are eligible; `pb_wave_strength_ok` must be true to confirm pullback health.
 4) **FVG creation**: Directional FVG must print (`fvg_up`/`fvg_down`). The first FVG in the leg is most desired (`mgann_leg_first_fvg=true`).
 5) **Retest confirmation**: `fvg_retest=true` marks price interaction. Without retest the event is skipped.

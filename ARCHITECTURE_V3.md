@@ -348,11 +348,12 @@ Step 4: FVG Retest
 Step 5: Wave Strength Check
 ───────────────────────────
      During retest, check pullback wave:
-     - Delta during pullback should be weak
-     - Volume should be declining
-     - pb_wave_strength_ok = True if:
-       * Pullback delta < 30% of impulse delta
-       * Volume declining trend
+     - Pullback must stay shallow (no structure break)
+     - pb_wave_strength_ok = True only if (Hybrid Rule v4):
+       * mgann_wave_strength_pullback < 40
+       * |pullback_delta| <= 30% of impulse_delta AND pullback_delta not too aggressive (>= -35 for longs / <= 35 for shorts)
+       * pullback_volume <= 60% of impulse_volume AND <= 1.0x avg_volume
+       * Structure intact: longs require pb_low > leg1_low (mirror for shorts)
 
 Step 6: LONG ENTRY
 ──────────────────
@@ -429,9 +430,12 @@ pb_wave_strength_ok: bool
 
 # Calculation:
 # pb_wave_strength_ok = (
-#     pullback_delta < impulse_delta * 0.3 AND
-#     pullback_volume < impulse_volume * 0.5 AND
-#     mgann_wave_strength of pullback < 40
+#     mgann_wave_strength_pullback < 40 AND
+#     abs(pullback_delta) <= abs(impulse_delta) * 0.3 AND
+#     pullback_volume < impulse_volume * 0.6 AND
+#     pullback_delta not too aggressive (>= -35 for longs / <= 35 for shorts) AND
+#     pullback_volume <= avg_volume * 1.0 AND
+#     pullback structure intact (longs: pb_low > leg1_low; shorts mirror)
 # )
 ```
 
