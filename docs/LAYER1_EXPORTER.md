@@ -76,5 +76,31 @@ Specification for the NinjaTrader exporter indicator that feeds the unified pipe
 }
 ```
 
+## MGann Leg Fields (Module 14)
+
+> [!IMPORTANT]
+> The following fields are **calculated by Module 14 (Python layer)**, not the C# exporter.
+> The C# exporter only exports raw SMC data (ext_dir, ext_bos_up, etc.).
+> Module 14 processes this raw data and calculates these derived fields.
+
+| Field | Type | Calculated By | Description |
+|-------|------|---------------|-------------|
+| `mgann_leg_index` | int | Module 14 | Current leg number (1, 2, 3...). Resets on CHoCH/BOS trend change. |
+| `mgann_leg_first_fvg` | bool | Module 14 | True if this bar has the FIRST FVG of the current leg. Subsequent FVGs in same leg = false. |
+| `pb_wave_strength_ok` | bool | Module 14 | True if pullback meets Hybrid Rule v4 criteria (6 conditions). See ARCHITECTURE_V3.md for formula. |
+
+**Pipeline:**
+```
+NinjaTrader C# → JSONL (raw: ext_dir, ext_bos_up, fvg_up, etc.)
+                  ↓
+Module 14 Python → JSON (+ mgann_leg_index, mgann_leg_first_fvg, pb_wave_strength_ok)
+```
+
+**Why Module 14 calculates these:**
+- Requires leg classification (impulse vs pullback)
+- Requires historical accumulation (impulse delta/volume)
+- Requires structure tracking (leg1 anchor levels)
+- Cannot be derived from single bar data alone
+
 ## Version
 - **v3** — canonical exporter contract for the unified pipeline.

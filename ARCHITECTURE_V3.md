@@ -345,15 +345,35 @@ Step 4: FVG Retest
      │     │  │     fvg_retest = True
      │     │  │
 
-Step 5: Wave Strength Check
-───────────────────────────
+Step 5: Wave Strength Check (Hybrid Rule v4)
+────────────────────────────────────────────
      During retest, check pullback wave:
      - Pullback must stay shallow (no structure break)
-     - pb_wave_strength_ok = True only if (Hybrid Rule v4):
-       * mgann_wave_strength_pullback < 40
-       * |pullback_delta| <= 30% of impulse_delta AND pullback_delta not too aggressive (>= -35 for longs / <= 35 for shorts)
-       * pullback_volume <= 60% of impulse_volume AND <= 1.0x avg_volume
-       * Structure intact: longs require pb_low > leg1_low (mirror for shorts)
+     - pb_wave_strength_ok = True only if ALL 6 conditions pass:
+
+     **Hybrid Rule v4 (Implemented in Module 14):**
+     
+     1. Wave Strength Gate:
+        mgann_wave_strength_pullback < 40
+     
+     2. Delta Ratio Check:
+        |pullback_delta| <= |impulse_delta| * 0.3
+     
+     3. Volume Ratio Check:
+        pullback_volume <= impulse_volume * 0.6
+     
+     4. Absolute Delta Gate:
+        (uptrend)   pullback_delta >= -35
+        (downtrend) pullback_delta <= 35
+     
+     5. Volume vs Average:
+        pullback_volume <= avg_volume * 1.0
+     
+     6. Structure Preservation:
+        (uptrend)   pullback_low > leg1_low
+        (downtrend) pullback_high < leg1_high
+
+     **All 6 conditions must be TRUE for pb_wave_strength_ok = True**
 
 Step 6: LONG ENTRY
 ──────────────────
@@ -423,20 +443,20 @@ mgann_leg_first_fvg: {
 
 # pb_wave_strength_ok
 # -------------------
-# Computed from Module #13 (Wave Delta) + Module #14 (MGann Swing)
+# Computed by Module #14 (MGann Swing) using Hybrid Rule v4
 # True if pullback wave shows weakness (confirmation for entry)
 
 pb_wave_strength_ok: bool
 
-# Calculation:
-# pb_wave_strength_ok = (
-#     mgann_wave_strength_pullback < 40 AND
-#     abs(pullback_delta) <= abs(impulse_delta) * 0.3 AND
-#     pullback_volume < impulse_volume * 0.6 AND
-#     pullback_delta not too aggressive (>= -35 for longs / <= 35 for shorts) AND
-#     pullback_volume <= avg_volume * 1.0 AND
-#     pullback structure intact (longs: pb_low > leg1_low; shorts mirror)
-# )
+# Hybrid Rule v4 Calculation (Module 14):
+# ALL 6 conditions must be TRUE:
+#
+# 1. mgann_wave_strength_pullback < 40
+# 2. abs(pullback_delta) <= abs(impulse_delta) * 0.3
+# 3. pullback_volume <= impulse_volume * 0.6
+# 4. pullback_delta >= -35 (uptrend) or <= 35 (downtrend)
+# 5. pullback_volume <= avg_volume * 1.0
+# 6. pb_low > leg1_low (uptrend) or pb_high < leg1_high (downtrend)
 ```
 
 ### 5.3 Updated EventState Schema

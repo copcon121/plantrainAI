@@ -83,7 +83,7 @@ def plot_price(fig, data, start_idx):
     return timestamps  # Return timestamps for use in other layers
 
 
-def plot_internal_swing(fig, data, start_idx):
+def plot_internal_swing(fig, data, start_idx, show_strength_markers=True):
     """Plot MGann internal swing zigzag (Layer 2)."""
     print("[*] Plotting internal swing (MGann FIX14)...")
     
@@ -179,29 +179,30 @@ def plot_internal_swing(fig, data, start_idx):
             showlegend=True,
         ))
         
-        # Wave strength markers on zigzag
-        fig.add_trace(go.Scatter(
-            x=zigzag_x,
-            y=zigzag_y,
-            mode='markers',
-            marker=dict(
-                size=8,
-                color=zigzag_strengths,
-                colorscale='RdYlGn',
-                cmin=0,
-                cmax=100,
-                showscale=True,
-                colorbar=dict(
-                    title="Wave<br>Strength",
-                    x=1.12,
-                    len=0.3,
-                    y=0.8,
-                )
-            ),
-            name='Wave Strength',
-            hovertext=[f"Strength: {s}/100" for s in zigzag_strengths],
-            hoverinfo='text',
-        ))
+        # Wave strength markers on zigzag (optional)
+        if show_strength_markers:
+            fig.add_trace(go.Scatter(
+                x=zigzag_x,
+                y=zigzag_y,
+                mode='markers',
+                marker=dict(
+                    size=8,
+                    color=zigzag_strengths,
+                    colorscale='RdYlGn',
+                    cmin=0,
+                    cmax=100,
+                    showscale=True,
+                    colorbar=dict(
+                        title="Wave<br>Strength",
+                        x=1.12,
+                        len=0.3,
+                        y=0.8,
+                    )
+                ),
+                name='Wave Strength',
+                hovertext=[f"Strength: {s}/100" for s in zigzag_strengths],
+                hoverinfo='text',
+            ))
     else:
         print(f"   [!] Not enough swing points to draw zigzag ({len(swing_points)} points)")
 
@@ -377,7 +378,7 @@ def plot_behaviors(fig, data, start_idx):
     print(f"   UT: {len(ut_bars)}, SP: {len(sp_bars)}, PB: {len(pb_bars)}, EX3: {len(ex3_bars)}")
 
 
-def create_chart(data, start_idx, end_idx):
+def create_chart(data, start_idx, end_idx, show_strength_markers=True):
     """Create complete interactive chart."""
     print(f"\n[*] Creating chart for bars {start_idx}-{end_idx}...")
     
@@ -388,7 +389,7 @@ def create_chart(data, start_idx, end_idx):
     timestamps = plot_price(fig, data, start_idx)
     
     # Layer 2: Internal swing (MGann)
-    plot_internal_swing(fig, data, start_idx)
+    plot_internal_swing(fig, data, start_idx, show_strength_markers=show_strength_markers)
     
     # Layer 3: External swing (SMC)
     plot_external_swing(fig, data, start_idx)
@@ -484,6 +485,11 @@ Examples:
         default=None,
         help='End bar index (default: all)'
     )
+    parser.add_argument(
+        '--no-strength',
+        action='store_true',
+        help='Hide wave strength markers/colorbar on zigzag'
+    )
     
     args = parser.parse_args()
     
@@ -501,7 +507,7 @@ Examples:
     end_idx = start_idx + len(data)
     
     # Create chart
-    fig = create_chart(data, start_idx, end_idx)
+    fig = create_chart(data, start_idx, end_idx, show_strength_markers=not args.no_strength)
     
     # Save chart
     filepath = save_chart(fig, start_idx, end_idx)
