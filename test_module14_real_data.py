@@ -58,8 +58,10 @@ def prepare_bar_for_module(bar):
     
     # Volume and delta from bar.bar.volume_stats
     volume = volume_stats.get('total_volume', bar.get('volume', 0))
-    delta = volume_stats.get('cum_delta', bar.get('delta', 0))
-    delta_close = volume_stats.get('delta_close', delta)
+    # Use delta_close = bar-level delta (NOT cumulative)
+    # delta_close represents the buy/sell imbalance for THIS bar only
+    delta = volume_stats.get('delta_close', 0)
+    delta_close = delta
     
     # Calculate range
     bar_range = high - low if high > low else 0.1
