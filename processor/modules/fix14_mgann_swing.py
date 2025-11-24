@@ -301,6 +301,16 @@ class Fix14MgannSwing(BaseModule):
         # Trend / CHoCH reset (use ext_dir/ext_choch if provided)
         self._maybe_reset_trend(bar_state, current_low, current_high)
 
+        # Bootstrap trend/leg from internal swing if external context is absent
+        if self.trend_dir == 0 and self.last_swing_dir != 0:
+            self.trend_dir = self.last_swing_dir
+            self.mgann_leg_index = 1
+            if self.trend_dir == 1:
+                self.leg1_low = self.last_swing_low if self.last_swing_low is not None else current_low
+            else:
+                self.leg1_high = self.last_swing_high if self.last_swing_high is not None else current_high
+            self._reset_active_leg(self.trend_dir, current_low, current_high)
+
         # Check swing creation using Gann 2-bar rule
         created_high = False
         created_low = False
@@ -401,8 +411,10 @@ class Fix14MgannSwing(BaseModule):
                 self.pb_wave_strength_flag = self._evaluate_pullback_strength(bar_state, history)
                 # Increment leg index when rejoining the trend after pullback
                 self.mgann_leg_index = max(self.mgann_leg_index, 1) + 1
-            elif self.mgann_leg_index == 0 and new_leg_dir == self.trend_dir:
-                self.mgann_leg_index = 1
+            elif new_leg_dir == self.trend_dir:
+                # If trend already known but leg index not started, start it
+                if self.mgann_leg_index == 0:
+                    self.mgann_leg_index = 1
             elif new_leg_dir == -self.trend_dir:
                 # New pullback starts; clear prior PB assessment until evaluated again
                 self.pb_wave_strength_flag = False
@@ -447,6 +459,12 @@ class Fix14MgannSwing(BaseModule):
         bar_state["mgann_leg_index"] = int(self.mgann_leg_index) if self.mgann_leg_index else 0
         bar_state["mgann_leg_first_fvg"] = mgann_leg_first_fvg
         bar_state["pb_wave_strength_ok"] = bool(self.pb_wave_strength_flag)
+        bar_state["mgann_leg_delta_sum"] = round(self.active_leg_delta, 3)
+        bar_state["mgann_leg_volume_sum"] = round(self.active_leg_volume, 3)
+        bar_state["mgann_last_impulse_delta"] = round(self.last_impulse_delta, 3)
+        bar_state["mgann_last_impulse_volume"] = round(self.last_impulse_volume, 3)
+        bar_state["mgann_pullback_delta"] = round(self.pullback_delta, 3)
+        bar_state["mgann_pullback_volume"] = round(self.pullback_volume, 3)
 
         return bar_state
 
