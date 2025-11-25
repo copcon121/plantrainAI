@@ -1,0 +1,191 @@
+[
+  {
+    "timestamp": "2025-10-23T00:03:00.000Z",
+    "bar_index": 3,
+    "signal_type": "ENTRY",
+    "direction": "SHORT",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4143,
+      "bottom": 4138.3
+    },
+    "trade": {
+      "direction": "SHORT",
+      "entry": 4110.9,
+      "sl": 4143.2,
+      "tp": 4014.0,
+      "risk": 32.3,
+      "reward": 96.9,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:08:00.000Z",
+    "bar_index": 8,
+    "signal_type": "ENTRY",
+    "direction": "LONG",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4079.1,
+      "bottom": 4074.3
+    },
+    "trade": {
+      "direction": "LONG",
+      "entry": 4108,
+      "sl": 4074.1,
+      "tp": 4209.7,
+      "risk": 33.9,
+      "reward": 101.7,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:10:00.000Z",
+    "bar_index": 10,
+    "signal_type": "ENTRY",
+    "direction": "SHORT",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4143,
+      "bottom": 4138.3
+    },
+    "trade": {
+      "direction": "SHORT",
+      "entry": 4109.1,
+      "sl": 4143.2,
+      "tp": 4006.8,
+      "risk": 34.1,
+      "reward": 102.3,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:11:00.000Z",
+    "bar_index": 11,
+    "signal_type": "ENTRY",
+    "direction": "LONG",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4079.1,
+      "bottom": 4074.3
+    },
+    "trade": {
+      "direction": "LONG",
+      "entry": 4107.8,
+      "sl": 4074.1,
+      "tp": 4208.9,
+      "risk": 33.7,
+      "reward": 101.1,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:25:00.000Z",
+    "bar_index": 25,
+    "signal_type": "ENTRY",
+    "direction": "SHORT",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4096.4,
+      "bottom": 4091.9
+    },
+    "trade": {
+      "direction": "SHORT",
+      "entry": 4087.7,
+      "sl": 4096.6,
+      "tp": 4061.0,
+      "risk": 8.9,
+      "reward": 26.7,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:30:00.000Z",
+    "bar_index": 30,
+    "signal_type": "ENTRY",
+    "direction": "SHORT",
+    "leg": 1,
+    "fvg_new": false,
+    "fvg_zone": {
+      "top": 4096.4,
+      "bottom": 4091.9
+    },
+    "trade": {
+      "direction": "SHORT",
+      "entry": 4093.3,
+      "sl": 4096.6,
+      "tp": 4083.4,
+      "risk": 3.3,
+      "reward": 9.9,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:31:00.000Z",
+    "bar_index": 31,
+    "signal_type": "ENTRY",
+    "direction": "SHORT",
+    "leg": 1,
+    "fvg_new": false,
+    "fvg_zone": {
+      "top": 4096.4,
+      "bottom": 4091.9
+    },
+    "trade": {
+      "direction": "SHORT",
+      "entry": 4094,
+      "sl": 4096.6,
+      "tp": 4086.2,
+      "risk": 2.6,
+      "reward": 7.8,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T00:33:00.000Z",
+    "bar_index": 33,
+    "signal_type": "ENTRY",
+    "direction": "LONG",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4079.1,
+      "bottom": 4074.3
+    },
+    "trade": {
+      "direction": "LONG",
+      "entry": 4099,
+      "sl": 4074.1,
+      "tp": 4173.7,
+      "risk": 24.9,
+      "reward": 74.7,
+      "rr_ratio": 3.0
+    }
+  },
+  {
+    "timestamp": "2025-10-23T03:33:00.000Z",
+    "bar_index": 213,
+    "signal_type": "ENTRY",
+    "direction": "LONG",
+    "leg": 1,
+    "fvg_new": true,
+    "fvg_zone": {
+      "top": 4079.1,
+      "bottom": 4074.3
+    },
+    "trade": {
+      "direction": "LONG",
+      "entry": 4107,
+      "sl": 4074.1,
+      "tp": 4205.7,
+      "risk": 32.9,
+      "reward": 98.7,
+      "rr_ratio": 3.0
+    }
+  }
+]
