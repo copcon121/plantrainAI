@@ -13,10 +13,10 @@ def load_data(filepath, start=None, end=None):
     end = end or len(data)
     return data[start:end], start
 
-def create_chart(data, start_idx, min_delta=50, min_bars=5):
+def create_chart(data, start_idx, min_delta=0, min_bars=0):
     """
-    min_delta: Only show delta sum if abs(delta) >= this value
-    min_bars: Only show delta sum if wave >= this many bars
+    min_delta: Only show delta sum if abs(delta) >= this value (0 = show all)
+    min_bars: Only show delta sum if wave >= this many bars (0 = show all)
     """
     fig = go.Figure()
     indices = list(range(start_idx, start_idx + len(data)))
@@ -36,6 +36,7 @@ def create_chart(data, start_idx, min_delta=50, min_bars=5):
     highs = [b.get('high',0) for b in data]
     lows = [b.get('low',0) for b in data]
     closes = [b.get('close',0) for b in data]
+    legs = [b.get('mgann_leg_index') for b in data]
     
     fig.add_trace(go.Candlestick(
         x=indices,
@@ -47,8 +48,8 @@ def create_chart(data, start_idx, min_delta=50, min_bars=5):
         increasing_line_color='#26A69A',
         decreasing_line_color='#EF5350',
         hovertext=[
-            f"{ts}<br>O: {o:.2f}<br>H: {h:.2f}<br>L: {l:.2f}<br>C: {c:.2f}"
-            for ts, o, h, l, c in zip(timestamps, opens, highs, lows, closes)
+            f"{ts}<br>O: {o:.2f}<br>H: {h:.2f}<br>L: {l:.2f}<br>C: {c:.2f}<br>Leg: {leg if leg is not None else '-'}"
+            for ts, o, h, l, c, leg in zip(timestamps, opens, highs, lows, closes, legs)
         ],
         hoverinfo='text',
     ))
@@ -57,12 +58,40 @@ def create_chart(data, start_idx, min_delta=50, min_bars=5):
     swing_highs = [b.get('mgann_internal_swing_high') for b in data]
     swing_lows = [b.get('mgann_internal_swing_low') for b in data]
     leg_dirs = [b.get('mgann_internal_leg_dir', 0) for b in data]
+    bos_up_x, bos_up_y = [], []
+    bos_down_x, bos_down_y = [], []
+    choch_up_x, choch_up_y = [], []
+    choch_down_x, choch_down_y = [], []
+    bos_up_hover, bos_down_hover = [], []
+    choch_up_hover, choch_down_hover = [], []
     
     swing_points = []
     last_high, last_low = None, None
     
     for i in range(len(data)):
         curr_dir = leg_dirs[i]
+        # Collect BOS/CHOCH markers for arrows
+        bar = data[i]
+        h = bar.get('high', highs[i])
+        l = bar.get('low', lows[i])
+        ts = timestamps[i]
+        if bar.get('ext_bos_up'):
+            bos_up_x.append(indices[i])
+            bos_up_y.append(h)
+            bos_up_hover.append(f"{ts}<br>BOS Up<br>H: {h:.2f}")
+        if bar.get('ext_bos_down'):
+            bos_down_x.append(indices[i])
+            bos_down_y.append(l)
+            bos_down_hover.append(f"{ts}<br>BOS Down<br>L: {l:.2f}")
+        if bar.get('ext_choch_up'):
+            choch_up_x.append(indices[i])
+            choch_up_y.append(h)
+            choch_up_hover.append(f"{ts}<br>CHOCH Up<br>H: {h:.2f}")
+        if bar.get('ext_choch_down'):
+            choch_down_x.append(indices[i])
+            choch_down_y.append(l)
+            choch_down_hover.append(f"{ts}<br>CHOCH Down<br>L: {l:.2f}")
+
         if curr_dir == 1 and (i == 0 or leg_dirs[i-1] != 1):
             if swing_lows[i] and swing_lows[i] != last_low:
                 swing_points.append((indices[i], swing_lows[i], 'low', i))
@@ -163,7 +192,7 @@ def create_chart(data, start_idx, min_delta=50, min_bars=5):
             
             wave_length = curr_swing_idx - prev_swing_idx
             
-            # FILTER: Only show significant waves
+            # FILTER: All waves shown when min_delta/min_bars = 0
             if abs(delta_sum) >= min_delta and wave_length >= min_bars:
                 x_pos = swing_points[i][0]  # Position at current swing point
                 y_pos = swing_points[i][1]
@@ -187,6 +216,57 @@ def create_chart(data, start_idx, min_delta=50, min_bars=5):
                     font=dict(size=10, color=color, family='Arial'),
                     bgcolor='rgba(255,255,255,0.7)'
                 )
+
+        # Leg index labels at swing points
+        for x_pos, y_pos, swing_type, data_idx in swing_points:
+            if 0 <= data_idx < len(legs):
+                leg_idx = legs[data_idx]
+            else:
+                leg_idx = None
+
+            if leg_idx is None:
+                continue
+
+            # Offset to avoid overlapping the zigzag lines
+            y_offset = 4 if swing_type == 'low' else -4
+            fig.add_annotation(
+                x=x_pos,
+                y=y_pos + y_offset,
+                text=f"Leg {leg_idx}",
+                showarrow=False,
+                font=dict(size=9, color="#444", family="Arial"),
+                bgcolor='rgba(255,255,255,0.65)'
+            )
+
+    # BOS/CHOCH arrow markers
+    if bos_up_x:
+        fig.add_trace(go.Scatter(
+            x=bos_up_x, y=bos_up_y,
+            mode='markers', name='BOS Up',
+            marker=dict(symbol='triangle-up', size=12, color='#00CC00', line=dict(width=1, color='#006600')),
+            hovertext=bos_up_hover, hoverinfo='text'
+        ))
+    if bos_down_x:
+        fig.add_trace(go.Scatter(
+            x=bos_down_x, y=bos_down_y,
+            mode='markers', name='BOS Down',
+            marker=dict(symbol='triangle-down', size=12, color='#CC0000', line=dict(width=1, color='#660000')),
+            hovertext=bos_down_hover, hoverinfo='text'
+        ))
+    if choch_up_x:
+        fig.add_trace(go.Scatter(
+            x=choch_up_x, y=choch_up_y,
+            mode='markers', name='CHOCH Up',
+            marker=dict(symbol='triangle-up', size=11, color='#00CCCC', line=dict(width=1, color='#008888')),
+            hovertext=choch_up_hover, hoverinfo='text'
+        ))
+    if choch_down_x:
+        fig.add_trace(go.Scatter(
+            x=choch_down_x, y=choch_down_y,
+            mode='markers', name='CHOCH Down',
+            marker=dict(symbol='triangle-down', size=11, color='#FF9900', line=dict(width=1, color='#AA6600')),
+            hovertext=choch_down_hover, hoverinfo='text'
+        ))
     
     # 3. BOS/CHOCH horizontal dash lines at pivot levels
     line_length = 20  # Number of bars to extend line on each side
@@ -237,8 +317,8 @@ if __name__ == '__main__':
     parser.add_argument('--input', required=True)
     parser.add_argument('--start', type=int, default=0)
     parser.add_argument('--end', type=int)
-    parser.add_argument('--min-delta', type=int, default=50, help='Minimum delta to show label')
-    parser.add_argument('--min-bars', type=int, default=5, help='Minimum bars in wave to show label')
+    parser.add_argument('--min-delta', type=int, default=0, help='Minimum delta to show label (0 = show all)')
+    parser.add_argument('--min-bars', type=int, default=0, help='Minimum bars in wave to show label (0 = show all)')
     args = parser.parse_args()
     
     data, start_idx = load_data(args.input, args.start, args.end)

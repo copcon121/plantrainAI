@@ -112,19 +112,27 @@ class Fix16StrategyV1(BaseModule):
         # if not m5_bullish:
         #     return False, None
         
+        # === Condition 0: Structure shift must be bearish (CHoCH/BOS down) and ext_dir = -1
+        if not (bar_state.get('ext_choch_down') or bar_state.get('ext_bos_down')):
+            return False, None
+        if bar_state.get('ext_dir') != -1:
+            return False, None
+
         # === Condition 1: Leg 1 pullback (after CHoCH) ===
-        # CHoCH already happened, we're in Leg 1 pullback zone
         leg = bar_state.get('mgann_leg_index', 0)
         if leg != 1:
             return False, None
         
-        # === Condition 1.5: Pullback zone entry filter ===
-        # LONG (after CHoCH DOWN): entry must be ABOVE last_swing_low
-        # This ensures we enter in the PULLBACK zone, not at breakout level
-        entry_price = bar_state.get('close', 0)
-        last_swing_low = bar_state.get('last_swing_low', None)
+        # Leg1 must have broken previous trend extreme (structure taken out)
+        if not bar_state.get('leg1_breaks_prev_extreme', False):
+            return False, None
         
-        if last_swing_low is not None and entry_price <= last_swing_low:
+        # === Condition 1.5: Pullback zone entry filter ===
+        # LONG: entry must be ABOVE swing low (prefer MGann internal)
+        entry_price = bar_state.get('close', 0)
+        swing_low = bar_state.get('mgann_internal_swing_low', bar_state.get('last_swing_low', None))
+        
+        if swing_low is not None and entry_price <= swing_low:
             # Entry at or below CHoCH level = too close to breakout
             return False, None
         
@@ -187,19 +195,27 @@ class Fix16StrategyV1(BaseModule):
         Returns:
             (bool, dict): (signal_valid, fvg_info)
         """
+        # === Condition 0: Structure shift must be bullish (CHoCH/BOS up) and ext_dir = 1
+        if not (bar_state.get('ext_choch_up') or bar_state.get('ext_bos_up')):
+            return False, None
+        if bar_state.get('ext_dir') != 1:
+            return False, None
+
         # === Condition 1: Leg 1 pullback (after CHoCH) ===
-        # CHoCH already happened, we're in Leg 1 pullback zone
         leg = bar_state.get('mgann_leg_index', 0)
         if leg != 1:
             return False, None
         
-        # === Condition 1.5: Pullback zone entry filter ===
-        # SHORT (after CHoCH UP): entry must be BELOW last_swing_high
-        # This ensures we enter in the PULLBACK zone, not at breakout level
-        entry_price = bar_state.get('close', 0)
-        last_swing_high = bar_state.get('last_swing_high', None)
+        # Leg1 must have broken previous trend extreme
+        if not bar_state.get('leg1_breaks_prev_extreme', False):
+            return False, None
         
-        if last_swing_high is not None and entry_price >= last_swing_high:
+        # === Condition 1.5: Pullback zone entry filter ===
+        # SHORT: entry must be BELOW swing high (prefer MGann internal)
+        entry_price = bar_state.get('close', 0)
+        swing_high = bar_state.get('mgann_internal_swing_high', bar_state.get('last_swing_high', None))
+        
+        if swing_high is not None and entry_price >= swing_high:
             # Entry at or above CHoCH level = too close to breakout
             return False, None
         

@@ -88,6 +88,10 @@ class Fix14MgannSwing(BaseModule):
         # FVG tracking per leg
         self.current_leg_fvg_seen = False  # Track if FVG seen in current leg
         self.active_leg_dir = 0            # Current active leg direction
+        # Track prior trend extremes to validate new leg1 breaks
+        self.prev_trend_high = None
+        self.prev_trend_low = None
+        self.leg1_cut_prev_extreme = False
         
         # === NEW: Rolling averages and speed tracking ===
         self.delta_history = []            # Last 20 bars
@@ -96,6 +100,51 @@ class Fix14MgannSwing(BaseModule):
         self.avg_delta = 0.0
         self.avg_volume = 0.0
         self.avg_speed = 0.0
+
+    def _hard_reset(self, new_dir, bar_low, bar_high, prev_swing_low=None, prev_swing_high=None):
+        """
+        Force reset leg counting when structure is taken out (BOS/CHOCH or pivot break).
+        Sets trend_dir to new_dir (1=up, -1=down), leg index = 1, and anchors leg1.
+        """
+        if new_dir not in (1, -1):
+            return
+
+        # Store previous trend extremes to evaluate new leg1 break
+        self.prev_trend_low = prev_swing_low
+        self.prev_trend_high = prev_swing_high
+        self.leg1_cut_prev_extreme = False
+
+        self.trend_dir = new_dir
+        self.mgann_leg_index = 1
+
+        # Reset accumulators
+        self.last_impulse_delta = 0.0
+        self.last_impulse_volume = 0.0
+        self.last_impulse_strength = 0
+        self.pullback_delta = 0.0
+        self.pullback_volume = 0.0
+        self.pullback_strength = 0
+        self.pullback_low = None
+        self.pullback_high = None
+        self.pb_wave_strength_flag = False
+        self.impulse_wave_strength_ok = False
+        self.current_leg_fvg_seen = False
+        self.impulse_bar_count = 0
+        self.pullback_bar_count = 0
+        self.speed_history = []
+        self.avg_speed = 0.0
+
+        # Anchor leg1 extremes
+        if self.trend_dir == 1:
+            self.leg1_low = bar_low
+            self.leg1_high = None
+        else:
+            self.leg1_high = bar_high
+            self.leg1_low = None
+
+        # Active leg dir starts with trend direction
+        self.active_leg_dir = self.trend_dir
+        self.current_leg_fvg_seen = False
 
     
     def _check_gann_upswing(self, current_high, prev_high, prev_prev_high):
@@ -160,30 +209,10 @@ class Fix14MgannSwing(BaseModule):
             inferred_dir = -1  # Upward CHoCH/BOS indicates downtrend
         
         # Reset on trend change
-        if inferred_dir in (1, -1) and inferred_dir != self.trend_dir:
-            self.trend_dir = inferred_dir
-            self.mgann_leg_index = 1
-            
-            # Reset accumulators
-            self.last_impulse_delta = 0.0
-            self.last_impulse_volume = 0.0
-            self.last_impulse_strength = 0
-            self.pullback_delta = 0.0
-            self.pullback_volume = 0.0
-            self.pullback_strength = 0
-            self.pullback_low = None
-            self.pullback_high = None
-            self.pb_wave_strength_flag = False
-            
-            # Set leg1 anchor levels
-            if self.trend_dir == 1:
-                self.leg1_low = bar_low
-            else:
-                self.leg1_high = bar_high
-            
-            # Reset active leg
-            self.active_leg_dir = self.trend_dir
-            self.current_leg_fvg_seen = False
+        if inferred_dir in (1, -1):
+            # New requirement: always reset legs on BOS/CHOCH, even if direction unchanged.
+            if inferred_dir != self.trend_dir or choch_up or choch_down or bos_up or bos_down:
+                self._hard_reset(inferred_dir, bar_low, bar_high, self.last_swing_low, self.last_swing_high)
     
     def _evaluate_pullback_strength(self, bar_state, history):
         """
@@ -687,9 +716,27 @@ class Fix14MgannSwing(BaseModule):
         
         # Calculate wave strength (simple delta/volume ratio)
         wave_strength = self._compute_wave_strength()
-        
+
         # === NEW: Check for first FVG in current leg ===
         mgann_leg_first_fvg = self._check_leg_first_fvg(bar_state)
+
+        # === NEW: Track whether current leg1 breaks previous trend extreme ===
+        if self.mgann_leg_index == 1 and self.trend_dir != 0:
+            if self.trend_dir == 1 and self.prev_trend_high is not None and current_high > self.prev_trend_high:
+                self.leg1_cut_prev_extreme = True
+            elif self.trend_dir == -1 and self.prev_trend_low is not None and current_low < self.prev_trend_low:
+                self.leg1_cut_prev_extreme = True
+
+        # === NEW: Pivot-break reset (cutting prior swing extremes) ===
+        # If current move takes out the opposite swing extreme, start a fresh leg 1 in that direction.
+        if self.last_swing_high is not None and current_high > self.last_swing_high and self.trend_dir != 1:
+            self._hard_reset(1, current_low, current_high, self.last_swing_low, self.last_swing_high)
+            self.last_swing_high = current_high
+            self.last_swing_dir = 1
+        elif self.last_swing_low is not None and current_low < self.last_swing_low and self.trend_dir != -1:
+            self._hard_reset(-1, current_low, current_high, self.last_swing_low, self.last_swing_high)
+            self.last_swing_low = current_low
+            self.last_swing_dir = -1
         
         # Update bar_state with original fields
         bar_state["mgann_internal_swing_high"] = self.last_swing_high
@@ -710,6 +757,8 @@ class Fix14MgannSwing(BaseModule):
         bar_state["avg_delta"] = round(self.avg_delta, 2)
         bar_state["avg_volume"] = round(self.avg_volume, 2)
         bar_state["avg_speed"] = round(self.avg_speed, 4)
+        # Export whether current leg1 has broken the previous trend extreme
+        bar_state["leg1_breaks_prev_extreme"] = bool(self.leg1_cut_prev_extreme)
 
         
         # No patterns (all False)
