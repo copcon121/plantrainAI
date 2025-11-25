@@ -67,6 +67,9 @@ class Fix14MgannSwing(BaseModule):
         self.last_impulse_delta = 0.0
         self.last_impulse_volume = 0.0
         self.last_impulse_strength = 0
+        self.impulse_speed = 0.0
+        self.impulse_bar_count = 0
+        self.impulse_wave_strength_ok = False  # NEW: Impulse validation flag
         
         # Pullback leg tracking  
         self.pullback_delta = 0.0
@@ -74,7 +77,9 @@ class Fix14MgannSwing(BaseModule):
         self.pullback_strength = 0
         self.pullback_low = None           # For structure check (uptrend)
         self.pullback_high = None          # For structure check (downtrend)
-        self.pb_wave_strength_flag = False # Result of Hybrid Rule v4
+        self.pullback_speed = 0.0
+        self.pullback_bar_count = 0
+        self.pb_wave_strength_flag = False # Result of refined validation
         
         # Structure anchors (leg1 levels)
         self.leg1_low = None               # Leg 1 low (uptrend)
@@ -83,6 +88,14 @@ class Fix14MgannSwing(BaseModule):
         # FVG tracking per leg
         self.current_leg_fvg_seen = False  # Track if FVG seen in current leg
         self.active_leg_dir = 0            # Current active leg direction
+        
+        # === NEW: Rolling averages and speed tracking ===
+        self.delta_history = []            # Last 20 bars
+        self.volume_history = []           # Last 20 bars
+        self.speed_history = []            # Last 5 waves
+        self.avg_delta = 0.0
+        self.avg_volume = 0.0
+        self.avg_speed = 0.0
 
     
     def _check_gann_upswing(self, current_high, prev_high, prev_prev_high):
@@ -249,6 +262,121 @@ class Fix14MgannSwing(BaseModule):
             and structure_ok
         )
     
+    def _calculate_speed(self, price_start, price_end, bar_count):
+        """
+        Calculate wave speed (price change per bar).
+        
+        Args:
+            price_start: Starting price
+            price_end: Ending price
+            bar_count: Number of bars in wave
+            
+        Returns:
+            float: Speed (price change per bar)
+        """
+        if bar_count <= 0:
+            return 0.0
+        return abs(price_end - price_start) / bar_count
+    
+    def _update_averages(self, bar_state):
+        """
+        Update rolling averages for delta, volume.
+        Uses 20-bar window.
+        """
+        delta = abs(bar_state.get('delta', 0))
+        volume = bar_state.get('volume', 0)
+        
+        self.delta_history.append(delta)
+        self.volume_history.append(volume)
+        
+        # Keep last 20 bars
+        if len(self.delta_history) > 20:
+            self.delta_history = self.delta_history[-20:]
+        if len(self.volume_history) > 20:
+            self.volume_history = self.volume_history[-20:]
+        
+        # Calculate averages
+        self.avg_delta = sum(self.delta_history) / len(self.delta_history) if self.delta_history else 0
+        self.avg_volume = sum(self.volume_history) / len(self.volume_history) if self.volume_history else 0
+    
+    def _evaluate_impulse_strength(self, bar_state):
+        """
+        Validate IMPULSE wave strength (Leg 1, 3, 5...).
+        
+        Criteria:
+        1. delta > avg_delta * 1.5
+        2. volume > avg_volume * 1.3
+        3. speed > avg_speed * 1.2
+        4. has_fvg == True
+        
+        Returns:
+            bool: True if impulse is strong enough
+        """
+        if self.avg_delta <= 0 or self.avg_volume <= 0:
+            return False
+        
+        # 1. Delta check
+        delta_ok = abs(self.last_impulse_delta) > self.avg_delta * 1.5
+        
+        # 2. Volume check
+        volume_ok = self.last_impulse_volume > self.avg_volume * 1.3
+        
+        # 3. Speed check
+        if self.avg_speed > 0:
+            speed_ok = self.impulse_speed > self.avg_speed * 1.2
+        else:
+            speed_ok = True  # Skip if no baseline yet
+        
+        # 4. FVG check - check if FVG was seen during this leg
+        has_fvg = self.current_leg_fvg_seen
+        
+        return delta_ok and volume_ok and speed_ok and has_fvg
+    
+    def _evaluate_pullback_strength_refined(self, bar_state):
+        """
+        Refined pullback strength validation (Leg 2, 4, 6...).
+        
+        Criteria:
+        1. abs(delta) < avg_delta * 0.7
+        2. volume < avg_volume * 0.7
+        3. speed < avg_speed * 0.7
+        4. no_momentum_reverse == True
+        
+        Returns:
+            bool: True if pullback is weak (good for entry)
+        """
+        if self.trend_dir == 0:
+            return False
+        
+        if self.avg_delta <= 0 or self.avg_volume <= 0:
+            return False
+        
+        # 1. Delta check
+        delta_ok = abs(self.pullback_delta) < self.avg_delta * 0.7
+        
+        # 2. Volume check
+        volume_ok = self.pullback_volume < self.avg_volume * 0.7
+        
+        # 3. Speed check
+        if self.avg_speed > 0:
+            speed_ok = self.pullback_speed < self.avg_speed * 0.7
+        else:
+            speed_ok = True
+        
+        # 4. No momentum reverse (structure + delta gate)
+        if self.trend_dir == 1:  # Uptrend
+            no_momentum = (
+                self.pullback_delta >= -35 and
+                (self.pullback_low is None or self.leg1_low is None or self.pullback_low > self.leg1_low)
+            )
+        else:  # Downtrend
+            no_momentum = (
+                self.pullback_delta <= 35 and
+                (self.pullback_high is None or self.leg1_high is None or self.pullback_high < self.leg1_high)
+            )
+        
+        return delta_ok and volume_ok and speed_ok and no_momentum
+    
     def _check_leg_first_fvg(self, bar_state):
         """
         Detect the first FVG within the current leg.
@@ -326,18 +454,74 @@ class Fix14MgannSwing(BaseModule):
             # === NEW: Leg transition handling ===
             if prev_dir != 1:
                 # Direction changed to UP
-                self.active_wave_delta = 0.0
-                self.active_wave_volume = 0.0
+                # SAVE metrics BEFORE resetting!
                 
-                # Finalize previous leg (if it was a pullback)
-                if prev_dir == -self.trend_dir and self.trend_dir != 0:
-                    # Previous leg was pullback, evaluate it
+                # Finalize previous leg
+                if prev_dir == self.trend_dir and self.trend_dir != 0:
+                    # Previous leg was IMPULSE - save and validate
+                    self.last_impulse_delta = self.active_wave_delta
+                    self.last_impulse_volume = self.active_wave_volume
+                    self.last_impulse_strength = self._compute_wave_strength()
+                    
+                    # Calculate impulse speed
+                    if self.trend_dir == 1:
+                        impulse_start = self.leg1_low if self.leg1_low is not None else current_low
+                        impulse_end = current_high
+                    else:
+                        impulse_start = self.leg1_high if self.leg1_high is not None else current_high
+                        impulse_end = current_low
+                    
+                    self.impulse_speed = self._calculate_speed(
+                        impulse_start, impulse_end, max(1, self.impulse_bar_count)
+                    )
+                    
+                    # Validate impulse strength
+                    self.impulse_wave_strength_ok = self._evaluate_impulse_strength(bar_state)
+                    
+                    # Update speed history
+                    self.speed_history.append(self.impulse_speed)
+                    if len(self.speed_history) > 5:
+                        self.speed_history = self.speed_history[-5:]
+                    self.avg_speed = sum(self.speed_history) / len(self.speed_history) if self.speed_history else 0
+                    
+                elif prev_dir == -self.trend_dir and self.trend_dir != 0:
+                    # Previous leg was PULLBACK - save and evaluate
                     self.pullback_delta = self.active_wave_delta
                     self.pullback_volume = self.active_wave_volume
                     self.pullback_strength = self._compute_wave_strength()
                     self.pullback_low = current_low
                     self.pullback_high = current_high
-                    self.pb_wave_strength_flag = self._evaluate_pullback_strength(bar_state, history)
+                    
+                    # Calculate pullback speed
+                    if self.trend_dir == 1:
+                        pb_start = self.pullback_high if self.pullback_high is not None else current_high
+                        pb_end = current_low
+                    else:
+                        pb_start = self.pullback_low if self.pullback_low is not None else current_low
+                        pb_end = current_high
+                    
+                    self.pullback_speed = self._calculate_speed(
+                        pb_start, pb_end, max(1, self.pullback_bar_count)
+                    )
+                    
+                    # Validate pullback strength (REFINED logic)
+                    self.pb_wave_strength_flag = self._evaluate_pullback_strength_refined(bar_state)
+                    
+                    # Update speed history
+                    self.speed_history.append(self.pullback_speed)
+                    if len(self.speed_history) > 5:
+                        self.speed_history = self.speed_history[-5:]
+                    self.avg_speed = sum(self.speed_history) / len(self.speed_history) if self.speed_history else 0
+                
+                # NOW reset accumulators for new leg
+                self.active_wave_delta = 0.0
+                self.active_wave_volume = 0.0
+                
+                # Reset bar counts
+                if self.last_swing_dir == self.trend_dir:
+                    self.impulse_bar_count = 0
+                else:
+                    self.pullback_bar_count = 0
                 
                 # Start new leg
                 if self.last_swing_dir == self.trend_dir:
@@ -358,18 +542,74 @@ class Fix14MgannSwing(BaseModule):
             # === NEW: Leg transition handling ===
             if prev_dir != -1:
                 # Direction changed to DOWN
-                self.active_wave_delta = 0.0
-                self.active_wave_volume = 0.0
+                # SAVE metrics BEFORE resetting!
                 
-                # Finalize previous leg (if it was a pullback)
-                if prev_dir == -self.trend_dir and self.trend_dir != 0:
-                    # Previous leg was pullback, evaluate it
+                # Finalize previous leg
+                if prev_dir == self.trend_dir and self.trend_dir != 0:
+                    # Previous leg was IMPULSE - save and validate
+                    self.last_impulse_delta = self.active_wave_delta
+                    self.last_impulse_volume = self.active_wave_volume
+                    self.last_impulse_strength = self._compute_wave_strength()
+                    
+                    # Calculate impulse speed
+                    if self.trend_dir == 1:
+                        impulse_start = self.leg1_low if self.leg1_low is not None else current_low
+                        impulse_end = current_high
+                    else:
+                        impulse_start = self.leg1_high if self.leg1_high is not None else current_high
+                        impulse_end = current_low
+                    
+                    self.impulse_speed = self._calculate_speed(
+                        impulse_start, impulse_end, max(1, self.impulse_bar_count)
+                    )
+                    
+                    # Validate impulse strength
+                    self.impulse_wave_strength_ok = self._evaluate_impulse_strength(bar_state)
+                    
+                    # Update speed history
+                    self.speed_history.append(self.impulse_speed)
+                    if len(self.speed_history) > 5:
+                        self.speed_history = self.speed_history[-5:]
+                    self.avg_speed = sum(self.speed_history) / len(self.speed_history) if self.speed_history else 0
+                    
+                elif prev_dir == -self.trend_dir and self.trend_dir != 0:
+                    # Previous leg was PULLBACK - save and evaluate
                     self.pullback_delta = self.active_wave_delta
                     self.pullback_volume = self.active_wave_volume
                     self.pullback_strength = self._compute_wave_strength()
                     self.pullback_low = current_low
                     self.pullback_high = current_high
-                    self.pb_wave_strength_flag = self._evaluate_pullback_strength(bar_state, history)
+                    
+                    # Calculate pullback speed
+                    if self.trend_dir == 1:
+                        pb_start = self.pullback_high if self.pullback_high is not None else current_high
+                        pb_end = current_low
+                    else:
+                        pb_start = self.pullback_low if self.pullback_low is not None else current_low
+                        pb_end = current_high
+                    
+                    self.pullback_speed = self._calculate_speed(
+                        pb_start, pb_end, max(1, self.pullback_bar_count)
+                    )
+                    
+                    # Validate pullback strength (REFINED logic)
+                    self.pb_wave_strength_flag = self._evaluate_pullback_strength_refined(bar_state)
+                    
+                    # Update speed history
+                    self.speed_history.append(self.pullback_speed)
+                    if len(self.speed_history) > 5:
+                        self.speed_history = self.speed_history[-5:]
+                    self.avg_speed = sum(self.speed_history) / len(self.speed_history) if self.speed_history else 0
+                
+                # NOW reset accumulators for new leg
+                self.active_wave_delta = 0.0
+                self.active_wave_volume = 0.0
+                
+                # Reset bar counts
+                if self.last_swing_dir == self.trend_dir:
+                    self.impulse_bar_count = 0
+                else:
+                    self.pullback_bar_count = 0
                 
                 # Start new leg
                 if self.last_swing_dir == self.trend_dir:
@@ -393,15 +633,57 @@ class Fix14MgannSwing(BaseModule):
                 if current_low < self.last_swing_low:
                     self.last_swing_low = current_low
         
-        # Update previous bar tracking for next iteration
+        # Update prev tracking
         self.prev_prev_high = self.prev_bar_high
         self.prev_prev_low = self.prev_bar_low
         self.prev_bar_high = current_high
         self.prev_bar_low = current_low
         
-        # Accumulate wave delta/volume
+        # Accumulate delta and volume for active wave
         self.active_wave_delta += current_delta
         self.active_wave_volume += current_volume
+        
+        # === NEW: Update rolling averages ===
+        self._update_averages(bar_state)
+        
+        # === NEW: Track bar counts ===
+        # Increment appropriate counter based on leg direction
+        if self.active_leg_dir == self.trend_dir and self.trend_dir != 0:
+            self.impulse_bar_count += 1
+        elif self.active_leg_dir == -self.trend_dir and self.trend_dir != 0:
+            self.pullback_bar_count += 1
+        
+        # === CRITICAL: Structure Preservation Check ===
+        # If pullback breaks leg 1 level, structure is invalid → RESET legs
+        if self.mgann_leg_index >= 2 and self.trend_dir != 0:
+            structure_broken = False
+            
+            if self.trend_dir == 1:  # Uptrend
+                # Check if current low breaks below leg 1 low
+                if self.leg1_low is not None and current_low < self.leg1_low:
+                    structure_broken = True
+            else:  # Downtrend (trend_dir == -1)
+                # Check if current high breaks above leg 1 high
+                if self.leg1_high is not None and current_high > self.leg1_high:
+                    structure_broken = True
+            
+            if structure_broken:
+                # Structure invalidated - RESET leg count but keep trend
+                self.mgann_leg_index = 1
+                self.last_impulse_delta = 0.0
+                self.last_impulse_volume = 0.0
+                self.pullback_delta = 0.0
+                self.pullback_volume = 0.0
+                self.pb_wave_strength_flag = False
+                self.impulse_wave_strength_ok = False
+                self.current_leg_fvg_seen = False
+                self.impulse_bar_count = 0
+                self.pullback_bar_count = 0
+                # Update leg1 anchor to current level
+                if self.trend_dir == 1:
+                    self.leg1_low = current_low
+                else:
+                    self.leg1_high = current_high
         
         # Calculate wave strength (simple delta/volume ratio)
         wave_strength = self._compute_wave_strength()
@@ -420,6 +702,14 @@ class Fix14MgannSwing(BaseModule):
         bar_state["mgann_leg_index"] = int(self.mgann_leg_index) if self.mgann_leg_index else 0
         bar_state["mgann_leg_first_fvg"] = mgann_leg_first_fvg
         bar_state["pb_wave_strength_ok"] = bool(self.pb_wave_strength_flag)
+        
+        # === NEW: Export wave strength validation fields (v1.3.0) ===
+        bar_state["impulse_wave_strength_ok"] = bool(self.impulse_wave_strength_ok)
+        bar_state["impulse_speed"] = round(self.impulse_speed, 4)
+        bar_state["pullback_speed"] = round(self.pullback_speed, 4)
+        bar_state["avg_delta"] = round(self.avg_delta, 2)
+        bar_state["avg_volume"] = round(self.avg_volume, 2)
+        bar_state["avg_speed"] = round(self.avg_speed, 4)
 
         
         # No patterns (all False)

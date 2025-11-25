@@ -42,7 +42,7 @@ Canonical spec for the NinjaTrader exporter indicator that feeds the v3 Auto-Tra
 
 > Keep numeric formats as plain decimals; avoid thousands separators. Prices can be exported with 5 decimal places, ATR with 6.
 
-## New Fields (must be added to indicator)
+## New Fields (must be added to indicator)  ==> changed to module 14
 - `mgann_leg_index`: Counter of MGann legs within the current swing package.
 - `mgann_leg_first_fvg`: True only for the first FVG printed in a leg; resets on leg change.
 - `pb_wave_strength_ok`: Boolean gate indicating the pullback wave is healthy enough to trade (e.g., delta/volume alignment and depth constraints).
